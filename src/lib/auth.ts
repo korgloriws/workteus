@@ -2,16 +2,34 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import type { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ensureSchema } from "@/db/ensure";
 import { users } from "@/db/schema";
 
-const COOKIE_NAME = "workteus_session";
+export const COOKIE_NAME = "workteus_session";
 const SESSION_DAYS = 30;
 
 function secretKey() {
   const secret = process.env.AUTH_SECRET || "workteus-dev-secret-change-me";
   return new TextEncoder().encode(secret);
+}
+
+/** Em HTTP (IP:porta na VPS) o cookie Secure é ignorado pelo browser. */
+function cookieSecure() {
+  if (process.env.COOKIE_SECURE === "true") return true;
+  if (process.env.COOKIE_SECURE === "false") return false;
+  return false;
+}
+
+function sessionCookieOptions(maxAge: number) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: cookieSecure(),
+    path: "/",
+    maxAge,
+  };
 }
 
 export async function hashPassword(password: string) {
@@ -22,32 +40,35 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export async function createSession(userId: number, username: string) {
-  const token = await new SignJWT({ sub: String(userId), username })
+export async function createSessionToken(userId: number, username: string) {
+  return new SignJWT({ sub: String(userId), username })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
     .sign(secretKey());
+}
 
+export async function createSession(userId: number, username: string) {
+  const token = await createSessionToken(userId, username);
   const jar = await cookies();
-  jar.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_DAYS * 24 * 60 * 60,
-  });
+  jar.set(COOKIE_NAME, token, sessionCookieOptions(SESSION_DAYS * 24 * 60 * 60));
+}
+
+export function attachSessionCookie(
+  response: NextResponse,
+  token: string,
+) {
+  response.cookies.set(
+    COOKIE_NAME,
+    token,
+    sessionCookieOptions(SESSION_DAYS * 24 * 60 * 60),
+  );
+  return response;
 }
 
 export async function destroySession() {
   const jar = await cookies();
-  jar.set(COOKIE_NAME, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
+  jar.set(COOKIE_NAME, "", sessionCookieOptions(0));
 }
 
 export async function getSessionUser() {

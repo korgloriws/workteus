@@ -27,6 +27,7 @@ Veja `.env.example`:
 - `ADMIN_USER` / `ADMIN_PASSWORD` — usados no seed para criar o usuário inicial
 - `DATABASE_PATH` — caminho do arquivo SQLite
 - `PORT` — em Docker/VPS usa `4030` (não conflita com outros serviços)
+- `COOKIE_SECURE` — `false` em HTTP (`http://IP:4030`); `true` só com HTTPS
 
 Defina usuário e senha só no seu `.env` local — não versionado.
 

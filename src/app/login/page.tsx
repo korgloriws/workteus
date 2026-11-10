@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -25,13 +24,14 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Falha no login");
+        setLoading(false);
         return;
       }
-      router.replace(params.get("next") || "/dashboard");
-      router.refresh();
+      // Navegação completa para garantir que o cookie de sessão vá na próxima request
+      const next = params.get("next") || "/dashboard";
+      window.location.assign(next);
     } catch {
       setError("Não foi possível entrar");
-    } finally {
       setLoading(false);
     }
   }

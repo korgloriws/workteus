@@ -9,6 +9,7 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
       ADMIN_USER: ${ADMIN_USER:?defina ADMIN_USER no .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
       DATABASE_PATH: /app/data/workteus.db
     volumes:
       - workteus_data:/app/data
