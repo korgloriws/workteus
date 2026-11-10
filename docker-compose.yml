@@ -6,9 +6,9 @@ services:
     environment:
       PORT: 4030
       HOSTNAME: 0.0.0.0
-      AUTH_SECRET: ${AUTH_SECRET:-troque-por-um-segredo-longo}
-      ADMIN_USER: ${ADMIN_USER:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-workteus}
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
+      ADMIN_USER: ${ADMIN_USER:?defina ADMIN_USER no .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
       DATABASE_PATH: /app/data/workteus.db
     volumes:
       - workteus_data:/app/data

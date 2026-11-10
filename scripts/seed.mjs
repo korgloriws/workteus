@@ -78,14 +78,20 @@ sqlite.exec(`
   );
 `);
 
-const username = process.env.ADMIN_USER || "admin";
-const password = process.env.ADMIN_PASSWORD || "workteus";
+const username = process.env.ADMIN_USER;
+const password = process.env.ADMIN_PASSWORD;
+
+if (!username || !password) {
+  console.error("Defina ADMIN_USER e ADMIN_PASSWORD no ambiente/.env antes do seed.");
+  process.exit(1);
+}
+
 const existing = sqlite.prepare("SELECT id FROM users WHERE username = ?").get(username);
 
 if (!existing) {
   const hash = bcrypt.hashSync(password, 10);
   sqlite.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run(username, hash);
-  console.log(`Usuário criado: ${username} / ${password}`);
+  console.log(`Usuário criado: ${username}`);
 } else {
   console.log(`Usuário já existe: ${username}`);
 }

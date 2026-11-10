@@ -17,16 +17,18 @@ npm run db:seed
 npm run dev
 ```
 
-Acesse `http://localhost:3000` — usuário padrão `admin` / `workteus`.
+Acesse `http://localhost:3000` após configurar o `.env`.
 
 ## Variáveis
 
 Veja `.env.example`:
 
-- `AUTH_SECRET` — segredo da sessão
-- `ADMIN_USER` / `ADMIN_PASSWORD` — criados no seed se não existirem
+- `AUTH_SECRET` — segredo da sessão (obrigatório em produção)
+- `ADMIN_USER` / `ADMIN_PASSWORD` — usados no seed para criar o usuário inicial
 - `DATABASE_PATH` — caminho do arquivo SQLite
 - `PORT` — em Docker/VPS usa `4030` (não conflita com outros serviços)
+
+Defina usuário e senha só no seu `.env` local — não versionado.
 
 ## Deploy na VPS
 
@@ -34,7 +36,7 @@ Veja `.env.example`:
 
 ```bash
 cp .env.example .env
-# edite AUTH_SECRET e senha
+# edite AUTH_SECRET, ADMIN_USER e ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
