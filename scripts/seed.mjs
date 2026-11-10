@@ -86,14 +86,16 @@ if (!username || !password) {
   process.exit(1);
 }
 
+const hash = bcrypt.hashSync(password, 10);
 const existing = sqlite.prepare("SELECT id FROM users WHERE username = ?").get(username);
 
 if (!existing) {
-  const hash = bcrypt.hashSync(password, 10);
   sqlite.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run(username, hash);
   console.log(`Usuário criado: ${username}`);
 } else {
-  console.log(`Usuário já existe: ${username}`);
+  // Mantém o login alinhado ao .env em cada subida do container
+  sqlite.prepare("UPDATE users SET password_hash = ? WHERE username = ?").run(hash, username);
+  console.log(`Usuário atualizado: ${username}`);
 }
 
 const seeds = [

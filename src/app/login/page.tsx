@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
