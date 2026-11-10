@@ -1,11 +1,13 @@
-import { and, asc, desc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { services, taskStatusEvents, tasks } from "@/db/schema";
 import { nextTaskCode } from "./codes";
 import { canTransition } from "./status";
 import type { PeriodMode, Priority, TaskStatus } from "./types";
 import { normalizeStickyColor } from "./types";
-import { getPeriodRange, todayString, toDateString } from "./dates";
+import { getPeriodRange, periodKeyFromDate, todayString, toDateString } from "./dates";
+
+const OPEN_STATUSES_SQL = sql`${tasks.status} IN ('a_fazer','em_andamento','pausado','pulado')`;
 
 export async function listTasks(opts: {
   serviceId?: number;
@@ -16,6 +18,7 @@ export async function listTasks(opts: {
   status?: TaskStatus | "abertos" | "todos";
 }) {
   const conditions = [];
+  const reference = opts.reference ?? new Date();
 
   if (!opts.includeDeleted) {
     conditions.push(isNull(tasks.deletedAt));
@@ -25,8 +28,19 @@ export async function listTasks(opts: {
     conditions.push(eq(tasks.serviceId, opts.serviceId));
   }
 
-  if (opts.periodMode) {
-    const range = getPeriodRange(opts.periodMode, opts.reference ?? new Date());
+  if (opts.periodMode === "mes") {
+    // Lista do mês: tudo do periodKey + o que ainda não fechou de meses anteriores.
+    // Concluído / desistido NÃO arrastam — ficam só no mês de origem.
+    // Abertas (a_fazer, em_andamento, pausado, pulado) seguem mês a mês até resolver.
+    const monthKey = periodKeyFromDate(reference);
+    conditions.push(
+      or(
+        eq(tasks.periodKey, monthKey),
+        and(sql`${tasks.periodKey} < ${monthKey}`, OPEN_STATUSES_SQL)!,
+      )!,
+    );
+  } else if (opts.periodMode) {
+    const range = getPeriodRange(opts.periodMode, reference);
     const start = toDateString(range.start);
     const end = toDateString(range.end);
     conditions.push(
@@ -41,9 +55,7 @@ export async function listTasks(opts: {
 
   if (opts.status && opts.status !== "todos") {
     if (opts.status === "abertos") {
-      conditions.push(
-        sql`${tasks.status} IN ('a_fazer','em_andamento','pausado','pulado')`,
-      );
+      conditions.push(OPEN_STATUSES_SQL);
     } else {
       conditions.push(eq(tasks.status, opts.status));
     }
@@ -95,7 +107,28 @@ export async function listTasks(opts: {
     .from(tasks)
     .leftJoin(services, eq(tasks.serviceId, services.id))
     .where(where)
-    .orderBy(asc(tasks.sequence), desc(tasks.createdAt));
+    // Fila: ativas no topo; pulado vai pro fim da fila aberta; fechadas depois.
+    // Dentro do mesmo status, ordem natural de inclusão.
+    .orderBy(
+      sql`CASE ${tasks.status}
+        WHEN 'em_andamento' THEN 0
+        WHEN 'a_fazer' THEN 1
+        WHEN 'pausado' THEN 2
+        WHEN 'pulado' THEN 3
+        WHEN 'concluido' THEN 4
+        WHEN 'desistido' THEN 5
+        ELSE 6
+      END`,
+      // Arrastadas de outro mês sobem; não usar literal numérico no ORDER BY
+      // (SQLite trata "ORDER BY 0" como índice de coluna e quebra)
+      ...(opts.periodMode === "mes"
+        ? [
+            sql`CASE WHEN ${tasks.periodKey} = ${periodKeyFromDate(reference)} THEN 1 ELSE 0 END`,
+          ]
+        : []),
+      asc(tasks.createdAt),
+      asc(tasks.id),
+    );
 }
 
 export async function createTask(input: {

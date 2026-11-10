@@ -23,16 +23,19 @@ export async function GET(request: Request) {
   const ref = searchParams.get("ref");
   const includeDeleted = searchParams.get("includeDeleted") === "1";
 
-  const rows = await listTasks({
-    serviceId: serviceId ? Number(serviceId) : undefined,
-    periodMode: periodMode || undefined,
-    reference: ref ? new Date(ref) : new Date(),
-    q,
-    status,
-    includeDeleted,
-  });
-
-  return jsonOk(rows);
+  try {
+    const rows = await listTasks({
+      serviceId: serviceId ? Number(serviceId) : undefined,
+      periodMode: periodMode || undefined,
+      reference: ref ? new Date(ref) : new Date(),
+      q,
+      status,
+      includeDeleted,
+    });
+    return jsonOk(rows);
+  } catch (err) {
+    return jsonError(err instanceof Error ? err.message : "Erro ao listar tarefas", 500);
+  }
 }
 
 export async function POST(request: Request) {

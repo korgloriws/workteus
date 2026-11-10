@@ -1,11 +1,11 @@
 import type { TaskStatus } from "./types";
 
 const TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
-  a_fazer: ["em_andamento", "pulado", "desistido"],
-  em_andamento: ["pausado", "concluido", "desistido", "pulado"],
-  pausado: ["em_andamento", "desistido"],
-  pulado: ["a_fazer", "em_andamento", "desistido"],
-  concluido: ["a_fazer"],
+  a_fazer: ["em_andamento", "concluido", "pulado", "desistido"],
+  em_andamento: ["concluido", "pausado", "pulado", "desistido"],
+  pausado: ["em_andamento", "concluido", "desistido"],
+  pulado: ["a_fazer", "em_andamento", "concluido", "desistido"],
+  concluido: ["a_fazer", "em_andamento"],
   desistido: ["a_fazer"],
 };
 
@@ -23,24 +23,30 @@ export const STATUS_ACTIONS: Partial<
 > = {
   a_fazer: [
     { label: "Iniciar", to: "em_andamento" },
+    { label: "Concluir", to: "concluido" },
     { label: "Pular", to: "pulado" },
     { label: "Desistir", to: "desistido" },
   ],
   em_andamento: [
-    { label: "Pausar", to: "pausado" },
     { label: "Concluir", to: "concluido" },
+    { label: "Pausar", to: "pausado" },
     { label: "Pular", to: "pulado" },
     { label: "Desistir", to: "desistido" },
   ],
   pausado: [
     { label: "Retomar", to: "em_andamento" },
+    { label: "Concluir", to: "concluido" },
     { label: "Desistir", to: "desistido" },
   ],
   pulado: [
     { label: "Retornar", to: "a_fazer" },
     { label: "Iniciar", to: "em_andamento" },
+    { label: "Concluir", to: "concluido" },
     { label: "Desistir", to: "desistido" },
   ],
-  concluido: [{ label: "Reabrir", to: "a_fazer" }],
-  desistido: [{ label: "Reabrir", to: "a_fazer" }],
+  concluido: [
+    { label: "Retomar", to: "a_fazer" },
+    { label: "Em andamento", to: "em_andamento" },
+  ],
+  desistido: [{ label: "Retomar", to: "a_fazer" }],
 };

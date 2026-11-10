@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppNav({ username }: { username: string }) {
@@ -24,9 +25,7 @@ export function AppNav({ username }: { username: string }) {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link href="/dashboard" className="brand">
-            Workteus
-          </Link>
+          <BrandLogo href="/dashboard" />
           <nav className="nav-links nav-desktop">
             {links.map((l) => (
               <Link

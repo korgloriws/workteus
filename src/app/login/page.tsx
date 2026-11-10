@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 function LoginForm() {
@@ -38,9 +39,7 @@ function LoginForm() {
 
   return (
     <form className="panel login-card fade-in" onSubmit={onSubmit}>
-      <div className="brand" style={{ marginBottom: "0.35rem" }}>
-        Workteus
-      </div>
+      <BrandLogo href={null} className="login-brand" />
       <p className="muted" style={{ marginTop: 0 }}>
         Mesa de trabalho — post-its, pastas e o dia a dia sob controle.
       </p>

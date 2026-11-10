@@ -3,27 +3,32 @@
 import { useEffect } from "react";
 import { Portal } from "@/components/Portal";
 import { STATUS_ACTIONS } from "@/lib/status";
+import { formatPeriodKeyLabel, isCarriedOverTask } from "@/lib/dates";
 import { STATUS_LABELS, type TaskStatus } from "@/lib/types";
 import type { TaskItem } from "./TaskViews";
 
 type Props = {
   open: boolean;
   task: TaskItem | null;
+  viewPeriodKey?: string;
   onClose: () => void;
   onStatus: (task: TaskItem, to: TaskStatus) => void;
   onEdit: (task: TaskItem) => void;
   onDelete: (task: TaskItem) => void;
   onSteps: (task: TaskItem) => void;
+  onOpenColor?: (task: TaskItem) => void;
 };
 
 export function TaskActionsSheet({
   open,
   task,
+  viewPeriodKey,
   onClose,
   onStatus,
   onEdit,
   onDelete,
   onSteps,
+  onOpenColor,
 }: Props) {
   useEffect(() => {
     if (!open) return;
@@ -37,6 +42,7 @@ export function TaskActionsSheet({
   if (!open || !task) return null;
 
   const actions = STATUS_ACTIONS[task.status as TaskStatus] || [];
+  const carried = isCarriedOverTask(task.periodKey, viewPeriodKey);
 
   return (
     <Portal>
@@ -48,10 +54,18 @@ export function TaskActionsSheet({
             <p className="muted" style={{ margin: "0.25rem 0 0" }}>
               {task.title}
             </p>
-            <span className={`status-${task.status}`} style={{ marginTop: "0.55rem" }}>
-              {STATUS_LABELS[task.status as TaskStatus]}
-            </span>
+            <div className="sheet-head-meta">
+              <span className={`status-${task.status}`}>
+                {STATUS_LABELS[task.status as TaskStatus]}
+              </span>
+              {carried ? (
+                <span className="carry-chip" title="Ainda aberta — veio de outro mês">
+                  Não é deste mês · {formatPeriodKeyLabel(task.periodKey)}
+                </span>
+              ) : null}
+            </div>
           </div>
+
           <div className="sheet-actions">
             {actions.map((a) => (
               <button
@@ -76,6 +90,15 @@ export function TaskActionsSheet({
             >
               Etapas
             </button>
+            {onOpenColor ? (
+              <button
+                type="button"
+                className="btn secondary sheet-action"
+                onClick={() => onOpenColor(task)}
+              >
+                Cor
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn secondary sheet-action"

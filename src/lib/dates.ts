@@ -17,6 +17,30 @@ export function periodKeyFromDate(date = new Date()): string {
   return format(date, "yyyy-MM");
 }
 
+/** Ex.: 2026-10 → "out/2026" */
+export function formatPeriodKeyLabel(periodKey?: string | null): string {
+  if (!periodKey || !/^\d{4}-\d{2}$/.test(periodKey)) return periodKey || "";
+  try {
+    return format(parseISO(`${periodKey}-01T12:00:00`), "MMM/yyyy", { locale: ptBR });
+  } catch {
+    return periodKey;
+  }
+}
+
+/** Tarefa aberta cujo periodKey é de outro mês que o mês em tela. */
+export function isCarriedOverTask(
+  taskPeriodKey?: string | null,
+  viewPeriodKey?: string | null,
+): boolean {
+  return !!viewPeriodKey && !!taskPeriodKey && taskPeriodKey !== viewPeriodKey;
+}
+
+/** Texto curto da origem: "De out/2026" */
+export function carryOriginLabel(periodKey?: string | null): string {
+  const label = formatPeriodKeyLabel(periodKey);
+  return label ? `De ${label}` : "De outro mês";
+}
+
 export function getPeriodRange(
   mode: PeriodMode,
   reference = new Date(),

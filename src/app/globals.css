@@ -208,6 +208,8 @@ textarea {
   color: var(--ink);
   position: relative;
   padding-bottom: 0.15rem;
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .brand::after {
@@ -218,6 +220,54 @@ textarea {
   bottom: -0.28rem;
   height: 1.5px;
   background: var(--gold);
+  transform-origin: left center;
+}
+
+.brand-assemble .brand-letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.4em) rotate(-4deg);
+  animation: brand-letter-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i) * 70ms + 80ms);
+}
+
+.brand-assemble::after {
+  transform: scaleX(0);
+  animation: brand-rule-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(8 * 70ms + 220ms);
+}
+
+@keyframes brand-letter-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em) rotate(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes brand-rule-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-assemble .brand-letter {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .brand-assemble::after {
+    transform: none;
+    animation: none;
+  }
 }
 
 .nav-links {
@@ -733,8 +783,10 @@ table.data th {
   padding: 1.7rem 1.45rem 1.55rem 2.3rem;
 }
 
-.login-card .brand {
+.login-card .brand,
+.login-brand {
   font-size: 2.05rem;
+  margin-bottom: 0.35rem;
 }
 
 .service-tabs {
@@ -1330,6 +1382,31 @@ body:has(.modal-backdrop) .bottom-nav {
   border: 0;
 }
 
+.geral-capture {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.95rem;
+}
+
+.geral-capture .quick-capture {
+  margin-top: 0;
+}
+
+.geral-capture-folder {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.geral-capture-folder select {
+  width: 100%;
+  max-width: 280px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  color: var(--ink);
+}
+
 .quick-capture {
   display: flex;
   align-items: center;
@@ -1484,9 +1561,8 @@ body:has(.modal-backdrop) .bottom-nav {
 .sticky-colors {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.4rem;
   align-items: center;
-  margin-top: 0.15rem;
 }
 
 .form-sticky-colors {
@@ -1494,18 +1570,56 @@ body:has(.modal-backdrop) .bottom-nav {
 }
 
 .sticky-color-dot {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.35rem;
+  height: 1.35rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, #000 18%, transparent);
+  border: 1.5px solid color-mix(in srgb, #000 28%, transparent);
   padding: 0;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent);
+  flex: 0 0 auto;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #fff 40%, transparent),
+    0 1px 2px color-mix(in srgb, #000 12%, transparent);
 }
 
 .sticky-color-dot.active {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+  outline: 2px solid var(--sticky-text);
+  outline-offset: 2px;
+}
+
+.color-sheet-grid {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.85rem;
+}
+
+.color-sheet-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  color: var(--ink);
+  font: inherit;
+}
+
+.color-sheet-option.active {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.color-sheet-swatch {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, #000 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent);
 }
 
 .sticky-card.sticky-note:nth-child(3n) {
@@ -1573,6 +1687,67 @@ body:has(.modal-backdrop) .bottom-nav {
   font-size: 0.78rem;
   color: var(--sticky-ink);
   overflow-wrap: anywhere;
+}
+
+.sticky-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.sticky-service {
+  display: inline-flex;
+  align-self: start;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sticky-ink);
+  border-bottom: 2px solid var(--folder-accent, var(--gold));
+  padding-bottom: 0.05rem;
+}
+
+.sticky-carry-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--sticky-ink);
+  opacity: 0.85;
+  border-bottom: 1px dashed color-mix(in srgb, var(--sticky-ink) 55%, transparent);
+  padding-bottom: 0.05rem;
+}
+
+.sticky-carried {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--sticky-ink) 40%, transparent);
+}
+
+.carry-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  border-bottom: 1px dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  padding-bottom: 0.05rem;
+  white-space: nowrap;
+}
+
+.row-carried td:first-child {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.calendar-item-carried {
+  font-style: italic;
+  opacity: 0.92;
+}
+
+.sheet-head-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  align-items: center;
+  margin-top: 0.55rem;
 }
 
 .sticky-notes-label {

@@ -31,19 +31,27 @@ type Pref = {
   periodMode: PeriodMode;
 };
 
+type TabId = "geral" | number;
+
 export function ServiceWorkspace({
   initialServiceId,
 }: {
   initialServiceId?: number;
 }) {
   const [services, setServices] = useState<Service[]>([]);
-  const [serviceId, setServiceId] = useState<number | undefined>(initialServiceId);
+  const [tab, setTab] = useState<TabId>(initialServiceId ?? "geral");
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [pref, setPref] = useState<Pref>({ viewMode: "lista", periodMode: "mes" });
+  const [geralPeriod, setGeralPeriod] = useState<PeriodMode>("mes");
+  const [captureServiceId, setCaptureServiceId] = useState<number | undefined>(initialServiceId);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("abertos");
   const [reference, setReference] = useState(new Date());
   const [loading, setLoading] = useState(true);
+  const isGeral = tab === "geral";
+  const serviceId = isGeral ? undefined : tab;
+  const activePeriod = isGeral ? geralPeriod : pref.periodMode;
+  const activeView: ViewMode = isGeral ? "lista" : pref.viewMode;
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
   const [reasonOpen, setReasonOpen] = useState<{
@@ -67,15 +75,15 @@ export function ServiceWorkspace({
   const isMobile = useIsMobile();
 
   const periodLabel = useMemo(
-    () => getPeriodRange(pref.periodMode, reference).label,
-    [pref.periodMode, reference],
+    () => getPeriodRange(activePeriod, reference).label,
+    [activePeriod, reference],
   );
 
   const loadServices = useCallback(async () => {
     const rows = await api<Service[]>("/api/services");
     setServices(rows);
-    if (!serviceId && rows[0]) setServiceId(rows[0].id);
-  }, [serviceId]);
+    if (!captureServiceId && rows[0]) setCaptureServiceId(rows[0].id);
+  }, [captureServiceId]);
 
   const loadPref = useCallback(async (sid: number) => {
     const p = await api<Pref>(`/api/preferences/${sid}`);
@@ -86,22 +94,22 @@ export function ServiceWorkspace({
   }, []);
 
   const loadTasks = useCallback(async () => {
-    if (!serviceId) return;
+    if (!isGeral && !serviceId) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        serviceId: String(serviceId),
-        periodMode: pref.periodMode,
+        periodMode: activePeriod,
         ref: format(reference, "yyyy-MM-dd"),
         status: statusFilter,
       });
+      if (!isGeral && serviceId) params.set("serviceId", String(serviceId));
       if (q.trim()) params.set("q", q.trim());
       const rows = await api<TaskItem[]>(`/api/tasks?${params}`);
       setTasks(rows);
     } finally {
       setLoading(false);
     }
-  }, [serviceId, pref.periodMode, reference, statusFilter, q]);
+  }, [isGeral, serviceId, activePeriod, reference, statusFilter, q]);
 
   useEffect(() => {
     loadServices().catch(console.error);
@@ -117,6 +125,10 @@ export function ServiceWorkspace({
   }, [loadTasks]);
 
   async function savePref(next: Partial<Pref>) {
+    if (isGeral) {
+      if (next.periodMode) setGeralPeriod(next.periodMode);
+      return;
+    }
     if (!serviceId) return;
     const merged = { ...pref, ...next };
     setPref(merged);
@@ -127,6 +139,7 @@ export function ServiceWorkspace({
   }
 
   async function createOrUpdate(values: TaskFormValues) {
+    const targetServiceId = values.serviceId || serviceId || captureServiceId;
     if (editing) {
       await api(`/api/tasks/${editing.id}`, {
         method: "PATCH",
@@ -139,13 +152,15 @@ export function ServiceWorkspace({
           notes: values.notes,
           color: values.color,
           link: values.link || null,
+          ...(values.serviceId ? { serviceId: values.serviceId } : {}),
         }),
       });
     } else {
+      if (!targetServiceId) return;
       await api("/api/tasks", {
         method: "POST",
         body: JSON.stringify({
-          serviceId,
+          serviceId: targetServiceId,
           title: values.title,
           description: values.description,
           priority: values.priority,
@@ -162,10 +177,11 @@ export function ServiceWorkspace({
   }
 
   async function quickCapture(title: string) {
-    if (!serviceId) return;
+    const targetId = isGeral ? captureServiceId : serviceId;
+    if (!targetId) return;
     await api("/api/tasks", {
       method: "POST",
-      body: JSON.stringify({ serviceId, title }),
+      body: JSON.stringify({ serviceId: targetId, title }),
     });
     await loadTasks();
   }
@@ -241,7 +257,7 @@ export function ServiceWorkspace({
     if (!serviceId) return;
     if (!confirm("Excluir este serviço e todas as tarefas?")) return;
     await api(`/api/services/${serviceId}`, { method: "DELETE" });
-    setServiceId(undefined);
+    setTab("geral");
     await loadServices();
   }
 
@@ -257,7 +273,11 @@ export function ServiceWorkspace({
     onColor: handleColor,
   };
 
-  const viewButtons = (
+  const viewButtons = isGeral ? (
+    <span className="muted" style={{ fontSize: "0.85rem" }}>
+      Visão: notas · ordem de inclusão
+    </span>
+  ) : (
     <>
       {(
         [
@@ -284,7 +304,7 @@ export function ServiceWorkspace({
         <button
           key={mode}
           type="button"
-          className={`btn sm ${pref.periodMode === mode ? "" : "secondary"}`}
+          className={`btn sm ${activePeriod === mode ? "" : "secondary"}`}
           onClick={() => savePref({ periodMode: mode })}
         >
           {mode}
@@ -324,7 +344,9 @@ export function ServiceWorkspace({
         <div>
           <h1 className="hero-title">Pastas de trabalho</h1>
           <p className="desk-copy">
-            Cada demanda é um post-it na pasta — anote rápido e organize depois.
+            {isGeral
+              ? "Aba Geral — todas as pastas na ordem em que foram anotadas."
+              : "Cada demanda é um post-it na pasta — anote rápido e organize depois."}
           </p>
         </div>
         <div className="page-header-actions">
@@ -359,7 +381,7 @@ export function ServiceWorkspace({
               setEditing(null);
               setFormOpen(true);
             }}
-            disabled={!serviceId}
+            disabled={!serviceId && !captureServiceId}
           >
             Ficha completa
           </button>
@@ -367,6 +389,14 @@ export function ServiceWorkspace({
       </div>
 
       <div className="service-tabs">
+        <button
+          type="button"
+          className={`service-tab ${isGeral ? "active" : ""}`}
+          style={isGeral ? { boxShadow: "inset 0 -3px 0 var(--gold)" } : undefined}
+          onClick={() => setTab("geral")}
+        >
+          Geral
+        </button>
         {services.map((s) => (
           <button
             key={s.id}
@@ -377,14 +407,36 @@ export function ServiceWorkspace({
                 ? { boxShadow: `inset 0 -3px 0 ${s.color}` }
                 : { borderTop: `3px solid ${s.color}` }
             }
-            onClick={() => setServiceId(s.id)}
+            onClick={() => {
+              setTab(s.id);
+              setCaptureServiceId(s.id);
+            }}
           >
             {s.name}
           </button>
         ))}
       </div>
 
-      <QuickCapture disabled={!serviceId} onCapture={quickCapture} />
+      {isGeral ? (
+        <div className="geral-capture">
+          <label className="field geral-capture-folder">
+            <span>Anotar em</span>
+            <select
+              value={captureServiceId || ""}
+              onChange={(e) => setCaptureServiceId(Number(e.target.value))}
+            >
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <QuickCapture disabled={!captureServiceId} onCapture={quickCapture} />
+        </div>
+      ) : (
+        <QuickCapture disabled={!serviceId} onCapture={quickCapture} />
+      )}
 
       <div className="toolbar">
         <div className="toolbar-views">{viewButtons}</div>
@@ -408,7 +460,7 @@ export function ServiceWorkspace({
               <div className="sheet-head">
                 <strong>Filtros</strong>
                 <p className="muted" style={{ margin: "0.25rem 0 0" }}>
-                  Período, status e busca da pasta
+                  Período, status e busca
                 </p>
               </div>
               <div className="sheet-filters">{filterControls}</div>
@@ -421,19 +473,34 @@ export function ServiceWorkspace({
       ) : null}
 
       {loading ? (
-        <p className="desk-copy">Folheando a pasta…</p>
-      ) : pref.viewMode === "tabela" ? (
-        <TaskTableView tasks={tasks} {...handlers} />
-      ) : pref.viewMode === "calendario" ? (
-        <TaskCalendarView tasks={tasks} reference={reference} {...handlers} />
+        <p className="desk-copy">{isGeral ? "Abrindo a mesa geral…" : "Folheando a pasta…"}</p>
+      ) : activeView === "tabela" ? (
+        <TaskTableView
+          tasks={tasks}
+          viewPeriodKey={activePeriod === "mes" ? format(reference, "yyyy-MM") : undefined}
+          {...handlers}
+        />
+      ) : activeView === "calendario" ? (
+        <TaskCalendarView
+          tasks={tasks}
+          reference={reference}
+          viewPeriodKey={activePeriod === "mes" ? format(reference, "yyyy-MM") : undefined}
+          {...handlers}
+        />
       ) : (
-        <TaskListView tasks={tasks} {...handlers} />
+        <TaskListView
+          tasks={tasks}
+          showService={isGeral}
+          viewPeriodKey={activePeriod === "mes" ? format(reference, "yyyy-MM") : undefined}
+          {...handlers}
+        />
       )}
 
       <TaskFormModal
         key={editing ? `edit-${editing.id}` : `new-${formOpen}`}
         open={formOpen}
         title={editing ? "Editar demanda" : "Nova demanda"}
+        services={isGeral || !serviceId ? services : undefined}
         initial={
           editing
             ? {
@@ -445,8 +512,11 @@ export function ServiceWorkspace({
                 notes: editing.notes || "",
                 color: editing.color || "",
                 link: editing.link || "",
+                serviceId: editing.serviceId,
               }
-            : undefined
+            : {
+                serviceId: serviceId || captureServiceId,
+              }
         }
         onClose={() => {
           setFormOpen(false);

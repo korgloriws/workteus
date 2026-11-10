@@ -11,7 +11,6 @@ import {
   startOfWeek,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { STATUS_ACTIONS } from "@/lib/status";
 import {
   DEFAULT_STICKY_COLOR,
   normalizeStickyColor,
@@ -20,15 +19,22 @@ import {
   stickyGlueFor,
   type TaskStatus,
 } from "@/lib/types";
-import { formatDisplayDate } from "@/lib/dates";
+import {
+  carryOriginLabel,
+  formatDisplayDate,
+  formatPeriodKeyLabel,
+  isCarriedOverTask,
+} from "@/lib/dates";
 import { Portal } from "@/components/Portal";
 import { useIsMobile } from "@/lib/useMediaQuery";
+import { StickyColorSheet } from "./StickyColorSheet";
 import { TaskActionsSheet } from "./TaskActionsSheet";
 
 export type TaskItem = {
   id: number;
   serviceId?: number;
   code: string;
+  periodKey?: string;
   title: string;
   description?: string;
   status: string;
@@ -60,34 +66,6 @@ function stickyStatusClass(task: TaskItem) {
   return "";
 }
 
-function StickyColorPicker({
-  value,
-  onPick,
-}: {
-  value: string;
-  onPick: (color: string) => void;
-}) {
-  return (
-    <div className="sticky-colors" role="group" aria-label="Cor do post-it">
-      {STICKY_COLORS.map((c) => (
-        <button
-          key={c.id}
-          type="button"
-          className={`sticky-color-dot ${value === c.value ? "active" : ""}`}
-          style={{ background: c.value }}
-          title={c.label}
-          aria-label={c.label}
-          aria-pressed={value === c.value}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPick(c.value);
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function StepsHint({ task }: { task: TaskItem }) {
   const total = Number(task.stepsTotal || 0);
   const done = Number(task.stepsDone || 0);
@@ -102,14 +80,23 @@ function StepsHint({ task }: { task: TaskItem }) {
 function StickyCard({
   task,
   isMobile,
+  showService,
+  viewPeriodKey,
   onOpenSheet,
+  onOpenColor,
   ...handlers
-}: { task: TaskItem; isMobile: boolean; onOpenSheet: (task: TaskItem) => void } & Handlers) {
-  const actions = STATUS_ACTIONS[task.status as TaskStatus] || [];
-  const primary = actions[0];
+}: {
+  task: TaskItem;
+  isMobile: boolean;
+  showService?: boolean;
+  viewPeriodKey?: string;
+  onOpenSheet: (task: TaskItem) => void;
+  onOpenColor: (task: TaskItem) => void;
+} & Handlers) {
   const color = normalizeStickyColor(task.color || DEFAULT_STICKY_COLOR);
   const [notes, setNotes] = useState(task.notes || "");
   const [savingNotes, setSavingNotes] = useState(false);
+  const carriedOver = isCarriedOverTask(task.periodKey, viewPeriodKey);
 
   useEffect(() => {
     setNotes(task.notes || "");
@@ -128,7 +115,7 @@ function StickyCard({
 
   return (
     <article
-      className={`sticky-card ${stickyStatusClass(task)}`}
+      className={`sticky-card ${stickyStatusClass(task)}${carriedOver ? " sticky-carried" : ""}`}
       style={
         {
           "--sticky-face": color,
@@ -153,6 +140,25 @@ function StickyCard({
           <h3 className="sticky-title">{task.title}</h3>
         </button>
 
+        <div className="sticky-tags">
+          {showService && task.serviceName ? (
+            <span
+              className="sticky-service"
+              style={{ ["--folder-accent" as string]: task.serviceColor || "var(--gold)" }}
+            >
+              {task.serviceName}
+            </span>
+          ) : null}
+          {carriedOver ? (
+            <span
+              className="sticky-carry-tag"
+              title={`Origem ${task.periodKey} — ainda aberta, não é deste mês`}
+            >
+              Não é deste mês · {formatPeriodKeyLabel(task.periodKey)}
+            </span>
+          ) : null}
+        </div>
+
         {task.blockedBy ? (
           <p className="sticky-meta">Aguardando: {task.blockedBy}</p>
         ) : null}
@@ -176,8 +182,6 @@ function StickyCard({
           />
         </label>
 
-        <StickyColorPicker value={color} onPick={(next) => handlers.onColor(task, next)} />
-
         <div className="sticky-foot">
           <span>{formatDisplayDate(task.dueDate)}</span>
           <StepsHint task={task} />
@@ -185,23 +189,16 @@ function StickyCard({
       </div>
 
       <div className="sticky-toolbar">
-        {primary ? (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => handlers.onStatus(task, primary.to)}
-          >
-            {primary.label}
-          </button>
-        ) : null}
+        <button type="button" className="btn ghost sm" onClick={() => onOpenSheet(task)}>
+          Status
+        </button>
         <button type="button" className="btn ghost sm" onClick={() => handlers.onSteps(task)}>
           Etapas
         </button>
-        {isMobile ? (
-          <button type="button" className="btn ghost sm" onClick={() => onOpenSheet(task)}>
-            Mais
-          </button>
-        ) : (
+        <button type="button" className="btn ghost sm" onClick={() => onOpenColor(task)}>
+          Cor
+        </button>
+        {isMobile ? null : (
           <>
             <button type="button" className="btn ghost sm" onClick={() => handlers.onEdit(task)}>
               Ficha
@@ -218,10 +215,13 @@ function StickyCard({
 
 export function TaskListView({
   tasks,
+  showService = false,
+  viewPeriodKey,
   ...handlers
-}: { tasks: TaskItem[] } & Handlers) {
+}: { tasks: TaskItem[]; showService?: boolean; viewPeriodKey?: string } & Handlers) {
   const isMobile = useIsMobile();
   const [sheetTask, setSheetTask] = useState<TaskItem | null>(null);
+  const [colorTask, setColorTask] = useState<TaskItem | null>(null);
 
   if (!tasks.length) {
     return (
@@ -240,7 +240,10 @@ export function TaskListView({
             key={task.id}
             task={task}
             isMobile={isMobile}
+            showService={showService}
+            viewPeriodKey={viewPeriodKey}
             onOpenSheet={setSheetTask}
+            onOpenColor={setColorTask}
             {...handlers}
           />
         ))}
@@ -248,8 +251,22 @@ export function TaskListView({
       <TaskActionsSheet
         open={!!sheetTask}
         task={sheetTask}
+        viewPeriodKey={viewPeriodKey}
         onClose={() => setSheetTask(null)}
-        {...handlers}
+        onStatus={handlers.onStatus}
+        onEdit={handlers.onEdit}
+        onDelete={handlers.onDelete}
+        onSteps={handlers.onSteps}
+        onOpenColor={(task) => {
+          setSheetTask(null);
+          setColorTask(task);
+        }}
+      />
+      <StickyColorSheet
+        open={!!colorTask}
+        task={colorTask}
+        onClose={() => setColorTask(null)}
+        onPick={handlers.onColor}
       />
     </>
   );
@@ -257,10 +274,12 @@ export function TaskListView({
 
 export function TaskTableView({
   tasks,
+  viewPeriodKey,
   ...handlers
-}: { tasks: TaskItem[] } & Handlers) {
+}: { tasks: TaskItem[]; viewPeriodKey?: string } & Handlers) {
   const isMobile = useIsMobile();
   const [sheetTask, setSheetTask] = useState<TaskItem | null>(null);
+  const [colorTask, setColorTask] = useState<TaskItem | null>(null);
 
   if (!tasks.length) {
     return (
@@ -271,7 +290,7 @@ export function TaskTableView({
   }
 
   if (isMobile) {
-    return <TaskListView tasks={tasks} {...handlers} />;
+    return <TaskListView tasks={tasks} viewPeriodKey={viewPeriodKey} {...handlers} />;
   }
 
   return (
@@ -282,6 +301,7 @@ export function TaskTableView({
             <tr>
               <th>#</th>
               <th>Título</th>
+              <th>Mês</th>
               <th>Status</th>
               <th>Prioridade</th>
               <th>Etapas</th>
@@ -290,8 +310,10 @@ export function TaskTableView({
             </tr>
           </thead>
           <tbody>
-            {tasks.map((task) => (
-              <tr key={task.id}>
+            {tasks.map((task) => {
+              const carried = isCarriedOverTask(task.periodKey, viewPeriodKey);
+              return (
+              <tr key={task.id} className={carried ? "row-carried" : undefined}>
                 <td>{task.code}</td>
                 <td>
                   <div>{task.title}</div>
@@ -301,6 +323,15 @@ export function TaskTableView({
                       {task.notes.length > 80 ? "…" : ""}
                     </div>
                   ) : null}
+                </td>
+                <td>
+                  {carried ? (
+                    <span className="carry-chip" title="Ainda aberta — veio de outro mês">
+                      Não é deste mês · {formatPeriodKeyLabel(task.periodKey)}
+                    </span>
+                  ) : (
+                    <span className="muted">{formatPeriodKeyLabel(task.periodKey) || "—"}</span>
+                  )}
                 </td>
                 <td>
                   <span className={`status-${task.status}`}>
@@ -324,15 +355,30 @@ export function TaskTableView({
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
       <TaskActionsSheet
         open={!!sheetTask}
         task={sheetTask}
+        viewPeriodKey={viewPeriodKey}
         onClose={() => setSheetTask(null)}
-        {...handlers}
+        onStatus={handlers.onStatus}
+        onEdit={handlers.onEdit}
+        onDelete={handlers.onDelete}
+        onSteps={handlers.onSteps}
+        onOpenColor={(task) => {
+          setSheetTask(null);
+          setColorTask(task);
+        }}
+      />
+      <StickyColorSheet
+        open={!!colorTask}
+        task={colorTask}
+        onClose={() => setColorTask(null)}
+        onPick={handlers.onColor}
       />
     </>
   );
@@ -341,10 +387,12 @@ export function TaskTableView({
 export function TaskCalendarView({
   tasks,
   reference = new Date(),
+  viewPeriodKey,
   ...handlers
-}: { tasks: TaskItem[]; reference?: Date } & Handlers) {
+}: { tasks: TaskItem[]; reference?: Date; viewPeriodKey?: string } & Handlers) {
   const isMobile = useIsMobile();
   const [sheetTask, setSheetTask] = useState<TaskItem | null>(null);
+  const [colorTask, setColorTask] = useState<TaskItem | null>(null);
   const [dayModal, setDayModal] = useState<{ key: string; items: TaskItem[] } | null>(null);
 
   const monthStart = startOfMonth(reference);
@@ -418,17 +466,24 @@ export function TaskCalendarView({
                     style={{ opacity: isSameMonth(day, reference) ? 1 : 0.45 }}
                   >
                     <div className="day">{format(day, "d")}</div>
-                    {items.slice(0, 3).map((t) => (
+                    {items.slice(0, 3).map((t) => {
+                      const carried = isCarriedOverTask(t.periodKey, viewPeriodKey);
+                      return (
                       <button
                         key={t.id}
                         type="button"
-                        className="calendar-item"
-                        title={t.title}
+                        className={`calendar-item${carried ? " calendar-item-carried" : ""}`}
+                        title={
+                          carried
+                            ? `${t.title} · ${carryOriginLabel(t.periodKey)}`
+                            : t.title
+                        }
                         onClick={() => handlers.onEdit(t)}
                       >
-                        {t.title}
+                        {carried ? `↩ ${t.title}` : t.title}
                       </button>
-                    ))}
+                      );
+                    })}
                     {items.length > 3 ? (
                       <button
                         type="button"
@@ -450,7 +505,7 @@ export function TaskCalendarView({
             <p className="muted" style={{ marginBottom: "0.65rem" }}>
               Sem data — post-its soltos na mesa
             </p>
-            <TaskListView tasks={undated} {...handlers} />
+            <TaskListView tasks={undated} viewPeriodKey={viewPeriodKey} {...handlers} />
           </div>
         ) : null}
       </div>
@@ -467,7 +522,9 @@ export function TaskCalendarView({
               </div>
               <div className="sheet-list">
                 {dayModal.items.length ? (
-                  dayModal.items.map((task) => (
+                  dayModal.items.map((task) => {
+                    const carried = isCarriedOverTask(task.periodKey, viewPeriodKey);
+                    return (
                     <button
                       key={task.id}
                       type="button"
@@ -480,8 +537,12 @@ export function TaskCalendarView({
                     >
                       <strong>{task.code}</strong>
                       <span>{task.title}</span>
+                      {carried ? (
+                        <span className="carry-chip">{carryOriginLabel(task.periodKey)}</span>
+                      ) : null}
                     </button>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="muted">Nada neste dia.</p>
                 )}
@@ -497,8 +558,22 @@ export function TaskCalendarView({
       <TaskActionsSheet
         open={!!sheetTask}
         task={sheetTask}
+        viewPeriodKey={viewPeriodKey}
         onClose={() => setSheetTask(null)}
-        {...handlers}
+        onStatus={handlers.onStatus}
+        onEdit={handlers.onEdit}
+        onDelete={handlers.onDelete}
+        onSteps={handlers.onSteps}
+        onOpenColor={(task) => {
+          setSheetTask(null);
+          setColorTask(task);
+        }}
+      />
+      <StickyColorSheet
+        open={!!colorTask}
+        task={colorTask}
+        onClose={() => setColorTask(null)}
+        onPick={handlers.onColor}
       />
     </>
   );
