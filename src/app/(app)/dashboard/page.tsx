@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { addMonths, format, subMonths } from "date-fns";
 import { api } from "@/lib/client";
 import {
   DEFAULT_STICKY_COLOR,
@@ -10,10 +11,18 @@ import {
   stickyGlueFor,
   type TaskStatus,
 } from "@/lib/types";
-import { formatDisplayDate } from "@/lib/dates";
+import {
+  formatDisplayDate,
+  formatPeriodKeyLabel,
+  getPeriodRange,
+  isCarriedOverTask,
+  periodKeyFromDate,
+} from "@/lib/dates";
 import type { TaskItem } from "@/components/tasks/TaskViews";
 
 type Dashboard = {
+  monthKey: string;
+  isCurrentMonth: boolean;
   overdue: TaskItem[];
   dueToday: TaskItem[];
   paused: TaskItem[];
@@ -33,8 +42,15 @@ function stickyStatusClass(task: TaskItem) {
   return "";
 }
 
-function StickyPreview({ task }: { task: TaskItem }) {
+function StickyPreview({
+  task,
+  viewPeriodKey,
+}: {
+  task: TaskItem;
+  viewPeriodKey?: string;
+}) {
   const color = normalizeStickyColor(task.color || DEFAULT_STICKY_COLOR);
+  const carried = isCarriedOverTask(task.periodKey, viewPeriodKey);
   return (
     <Link
       href={`/services?id=${task.serviceId || ""}`}
@@ -42,7 +58,7 @@ function StickyPreview({ task }: { task: TaskItem }) {
       aria-label={`Abrir ${task.title}`}
     >
       <article
-        className={`sticky-card ${stickyStatusClass(task)}`}
+        className={`sticky-card ${stickyStatusClass(task)}${carried ? " sticky-carried" : ""}`}
         style={
           {
             "--sticky-face": color,
@@ -59,11 +75,24 @@ function StickyPreview({ task }: { task: TaskItem }) {
             </span>
           </div>
           <h3 className="sticky-title">{task.title}</h3>
+          <div className="sticky-tags">
+            {task.serviceName ? (
+              <span
+                className="sticky-service"
+                style={{ ["--folder-accent" as string]: task.serviceColor || "var(--gold)" }}
+              >
+                {task.serviceName}
+              </span>
+            ) : null}
+            {carried ? (
+              <span className="sticky-carry-tag">
+                Não é deste mês · {formatPeriodKeyLabel(task.periodKey)}
+              </span>
+            ) : null}
+          </div>
           {task.notes ? <p className="sticky-meta">{task.notes.slice(0, 90)}</p> : null}
           <div className="sticky-foot">
-            <span className="dash-sticky-meta">
-              {task.serviceName || "Pasta"} · {formatDisplayDate(task.dueDate)}
-            </span>
+            <span className="dash-sticky-meta">{formatDisplayDate(task.dueDate)}</span>
           </div>
         </div>
       </article>
@@ -75,10 +104,12 @@ function Section({
   title,
   items,
   empty,
+  viewPeriodKey,
 }: {
   title: string;
   items: TaskItem[];
   empty: string;
+  viewPeriodKey?: string;
 }) {
   return (
     <section className="panel" style={{ marginTop: 0 }}>
@@ -96,7 +127,7 @@ function Section({
         <div className="panel-pad" style={{ paddingTop: "0.85rem" }}>
           <div className="sticky-board" style={{ marginTop: 0 }}>
             {items.map((task) => (
-              <StickyPreview key={task.id} task={task} />
+              <StickyPreview key={task.id} task={task} viewPeriodKey={viewPeriodKey} />
             ))}
           </div>
         </div>
@@ -106,30 +137,87 @@ function Section({
 }
 
 export default function DashboardPage() {
+  const [reference, setReference] = useState(() => new Date());
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const monthLabel = useMemo(
+    () => getPeriodRange("mes", reference).label,
+    [reference],
+  );
+  const isCurrentMonth = periodKeyFromDate(reference) === periodKeyFromDate();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({
+        ref: format(reference, "yyyy-MM-dd"),
+      });
+      const rows = await api<Dashboard>(`/api/dashboard?${params}`);
+      setData(rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao carregar");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [reference]);
 
   useEffect(() => {
-    api<Dashboard>("/api/dashboard")
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, []);
+    load().catch(console.error);
+  }, [load]);
 
   return (
     <div className="desk-page">
       <div className="page-header">
         <div>
           <h1 className="hero-title">Folha de hoje</h1>
-          <p className="desk-copy">O que está em cima da mesa agora, em todas as pastas.</p>
+          <p className="desk-copy">
+            Mesa de {monthLabel} — o do mês e o que ainda está aberto de antes.
+          </p>
         </div>
-        <Link href="/services" className="btn page-header-cta">
-          Abrir pastas
-        </Link>
+        <div className="page-header-actions">
+          <div className="period-nav">
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => setReference((d) => subMonths(d, 1))}
+              aria-label="Mês anterior"
+            >
+              ←
+            </button>
+            <span className="muted period-label">{monthLabel}</span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => setReference((d) => addMonths(d, 1))}
+              aria-label="Próximo mês"
+            >
+              →
+            </button>
+          </div>
+          {!isCurrentMonth ? (
+            <button
+              type="button"
+              className="btn secondary sm"
+              onClick={() => setReference(new Date())}
+            >
+              Este mês
+            </button>
+          ) : null}
+          <Link href="/services" className="btn page-header-cta">
+            Abrir pastas
+          </Link>
+        </div>
       </div>
 
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
 
-      {data ? (
+      {loading && !data ? (
+        <p className="desk-copy">Abrindo a folha do mês…</p>
+      ) : data ? (
         <>
           <div className="grid-stats" style={{ marginTop: "1.25rem" }}>
             <div className="stat-card">
@@ -151,20 +239,41 @@ export default function DashboardPage() {
           </div>
 
           <div className="dash-board">
-            <Section title="Atrasadas no bloco" items={data.overdue} empty="Nada atrasado nesta folha." />
-            <Section title="Marcadas para hoje" items={data.dueToday} empty="Sem alvo para hoje." />
-            <Section title="Em andamento" items={data.inProgress} empty="Nada em andamento." />
-            <Section title="Pausadas / aguardando" items={data.paused} empty="Nenhuma pausa." />
+            <Section
+              title="Atrasadas no bloco"
+              items={data.overdue}
+              empty="Nada atrasado neste mês."
+              viewPeriodKey={data.monthKey}
+            />
+            <Section
+              title={data.isCurrentMonth ? "Marcadas para hoje" : "Com prazo neste mês"}
+              items={data.dueToday}
+              empty={
+                data.isCurrentMonth ? "Sem alvo para hoje." : "Nenhum prazo neste mês."
+              }
+              viewPeriodKey={data.monthKey}
+            />
+            <Section
+              title="Em andamento"
+              items={data.inProgress}
+              empty="Nada em andamento."
+              viewPeriodKey={data.monthKey}
+            />
+            <Section
+              title="Pausadas / aguardando"
+              items={data.paused}
+              empty="Nenhuma pausa."
+              viewPeriodKey={data.monthKey}
+            />
             <Section
               title="Carimbadas como concluídas"
               items={data.recentDone}
-              empty="Ainda sem conclusões."
+              empty="Ainda sem conclusões neste mês."
+              viewPeriodKey={data.monthKey}
             />
           </div>
         </>
-      ) : (
-        <p className="desk-copy">Abrindo a folha do dia…</p>
-      )}
+      ) : null}
     </div>
   );
 }

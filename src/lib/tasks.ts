@@ -285,18 +285,37 @@ export async function softDeleteTask(id: number, reason?: string | null) {
   return updated;
 }
 
-export async function getDashboard() {
+export async function getDashboard(reference = new Date()) {
   const today = todayString();
-  const all = await listTasks({ includeDeleted: false });
+  const monthKey = periodKeyFromDate(reference);
+  const currentMonthKey = periodKeyFromDate();
+  const isCurrentMonth = monthKey === currentMonthKey;
+  const range = getPeriodRange("mes", reference);
+  const monthStart = toDateString(range.start);
+  const monthEnd = toDateString(range.end);
+
+  // Mesma lógica das pastas: mês escolhido + abertas arrastadas de antes
+  const all = await listTasks({
+    includeDeleted: false,
+    periodMode: "mes",
+    reference,
+  });
 
   const openStatuses = new Set(["a_fazer", "em_andamento", "pausado", "pulado"]);
 
   const overdue = all.filter(
     (t) => t.dueDate && t.dueDate < today && openStatuses.has(t.status),
   );
-  const dueToday = all.filter(
-    (t) => t.dueDate === today && openStatuses.has(t.status),
-  );
+  // No mês atual: alvo de hoje. Em outros meses: abertas com prazo naquele mês.
+  const dueToday = isCurrentMonth
+    ? all.filter((t) => t.dueDate === today && openStatuses.has(t.status))
+    : all.filter(
+        (t) =>
+          t.dueDate &&
+          t.dueDate >= monthStart &&
+          t.dueDate <= monthEnd &&
+          openStatuses.has(t.status),
+      );
   const paused = all.filter((t) => t.status === "pausado");
   const inProgress = all.filter((t) => t.status === "em_andamento");
   const recentDone = all
@@ -305,6 +324,8 @@ export async function getDashboard() {
     .slice(0, 8);
 
   return {
+    monthKey,
+    isCurrentMonth,
     overdue,
     dueToday,
     paused,
@@ -318,7 +339,7 @@ export async function getDashboard() {
         (t) =>
           t.status === "concluido" &&
           t.completedAt &&
-          String(t.completedAt).startsWith(today.slice(0, 7)),
+          String(t.completedAt).startsWith(monthKey),
       ).length,
     },
   };
