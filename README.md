@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Workteus
 
-## Getting Started
+Planner de demandas para organizar trabalhos da prefeitura, projetos próprios e vida pessoal — no celular ou no desktop.
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript
+- SQLite (`data/workteus.db`) via Drizzle + better-sqlite3
+- Auth single-user (cookie JWT)
+- PWA instalável
+
+## Desenvolvimento
 
 ```bash
+npm install
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse `http://localhost:3000` — usuário padrão `admin` / `workteus`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variáveis
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Veja `.env.example`:
 
-## Learn More
+- `AUTH_SECRET` — segredo da sessão
+- `ADMIN_USER` / `ADMIN_PASSWORD` — criados no seed se não existirem
+- `DATABASE_PATH` — caminho do arquivo SQLite
+- `PORT` — em Docker/VPS usa `4030` (não conflita com outros serviços)
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy na VPS
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Opção A — Docker Compose (porta 4030)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cp .env.example .env
+# edite AUTH_SECRET e senha
+docker compose up -d --build
+```
 
-## Deploy on Vercel
+Acesse `http://SEU_IP:4030`. O volume `workteus_data` persiste o SQLite. Backup = copiar o `.db`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Opção B — Node + PM2
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm ci
+npm run db:seed
+npm run build
+# standalone:
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+PORT=4030 pm2 start .next/standalone/server.js --name workteus
+```
+
+Garanta que a pasta `data/` seja gravável e entre no backup.
+
+## Funcionalidades
+
+- Serviços (abas): criar / editar cor-nome via API / excluir
+- Demandas com código `COD-YYYY-MM-#NNN`
+- Status: a fazer, em andamento, pausado, pulado, concluído, desistido
+- Histórico de status, soft-delete com motivo opcional
+- Views por serviço: lista, tabela, calendário
+- Filtros: dia / semana / mês / ano + busca
+- Dashboard Hoje + gráficos dinâmicos

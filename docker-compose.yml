@@ -1,0 +1,18 @@
+services:
+  workteus:
+    build: .
+    ports:
+      - "4030:4030"
+    environment:
+      PORT: 4030
+      HOSTNAME: 0.0.0.0
+      AUTH_SECRET: ${AUTH_SECRET:-troque-por-um-segredo-longo}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-workteus}
+      DATABASE_PATH: /app/data/workteus.db
+    volumes:
+      - workteus_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  workteus_data:
