@@ -4,6 +4,7 @@ import { services, taskStatusEvents, tasks } from "@/db/schema";
 import { nextTaskCode } from "./codes";
 import { canTransition } from "./status";
 import type { PeriodMode, Priority, TaskStatus } from "./types";
+import { normalizeStickyColor } from "./types";
 import { getPeriodRange, todayString, toDateString } from "./dates";
 
 export async function listTasks(opts: {
@@ -78,6 +79,7 @@ export async function listTasks(opts: {
       dueDate: tasks.dueDate,
       completedAt: tasks.completedAt,
       notes: tasks.notes,
+      color: tasks.color,
       link: tasks.link,
       abandonReason: tasks.abandonReason,
       deletedAt: tasks.deletedAt,
@@ -104,6 +106,7 @@ export async function createTask(input: {
   blockedBy?: string | null;
   dueDate?: string | null;
   notes?: string;
+  color?: string;
   link?: string | null;
 }) {
   const [service] = await db
@@ -128,6 +131,7 @@ export async function createTask(input: {
       blockedBy: input.blockedBy || null,
       dueDate: input.dueDate || null,
       notes: input.notes?.trim() || "",
+      color: normalizeStickyColor(input.color),
       link: input.link || null,
       status: "a_fazer",
     })
@@ -152,6 +156,7 @@ export async function updateTask(
     blockedBy: string | null;
     dueDate: string | null;
     notes: string;
+    color: string;
     link: string | null;
     serviceId: number;
   }>,
@@ -168,6 +173,7 @@ export async function updateTask(
       ...("blockedBy" in input ? { blockedBy: input.blockedBy ?? null } : {}),
       ...("dueDate" in input ? { dueDate: input.dueDate ?? null } : {}),
       ...("notes" in input ? { notes: input.notes?.trim() || "" } : {}),
+      ...("color" in input ? { color: normalizeStickyColor(input.color) } : {}),
       ...("link" in input ? { link: input.link ?? null } : {}),
       ...("serviceId" in input ? { serviceId: input.serviceId! } : {}),
       updatedAt: sql`(datetime('now'))`,

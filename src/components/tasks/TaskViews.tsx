@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -12,7 +12,14 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { STATUS_ACTIONS } from "@/lib/status";
-import { STATUS_LABELS, type TaskStatus } from "@/lib/types";
+import {
+  DEFAULT_STICKY_COLOR,
+  normalizeStickyColor,
+  STICKY_COLORS,
+  STATUS_LABELS,
+  stickyGlueFor,
+  type TaskStatus,
+} from "@/lib/types";
 import { formatDisplayDate } from "@/lib/dates";
 import { Portal } from "@/components/Portal";
 import { useIsMobile } from "@/lib/useMediaQuery";
@@ -30,6 +37,7 @@ export type TaskItem = {
   dueDate?: string | null;
   completedAt?: string | null;
   notes?: string;
+  color?: string | null;
   link?: string | null;
   serviceName?: string | null;
   serviceColor?: string | null;
@@ -43,15 +51,41 @@ type Handlers = {
   onDelete: (task: TaskItem) => void;
   onSteps: (task: TaskItem) => void;
   onNotes: (task: TaskItem, notes: string) => void;
+  onColor: (task: TaskItem, color: string) => void;
 };
 
-function stickyTone(task: TaskItem) {
+function stickyStatusClass(task: TaskItem) {
   if (task.status === "concluido") return "sticky-done";
   if (task.status === "desistido") return "sticky-gone";
-  if (task.status === "pausado") return "sticky-paused";
-  if (task.priority === "alta") return "sticky-hot";
-  if (task.priority === "baixa") return "sticky-calm";
-  return "sticky-note";
+  return "";
+}
+
+function StickyColorPicker({
+  value,
+  onPick,
+}: {
+  value: string;
+  onPick: (color: string) => void;
+}) {
+  return (
+    <div className="sticky-colors" role="group" aria-label="Cor do post-it">
+      {STICKY_COLORS.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          className={`sticky-color-dot ${value === c.value ? "active" : ""}`}
+          style={{ background: c.value }}
+          title={c.label}
+          aria-label={c.label}
+          aria-pressed={value === c.value}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPick(c.value);
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function StepsHint({ task }: { task: TaskItem }) {
@@ -73,6 +107,7 @@ function StickyCard({
 }: { task: TaskItem; isMobile: boolean; onOpenSheet: (task: TaskItem) => void } & Handlers) {
   const actions = STATUS_ACTIONS[task.status as TaskStatus] || [];
   const primary = actions[0];
+  const color = normalizeStickyColor(task.color || DEFAULT_STICKY_COLOR);
   const [notes, setNotes] = useState(task.notes || "");
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -92,7 +127,15 @@ function StickyCard({
   }
 
   return (
-    <article className={`sticky-card ${stickyTone(task)}`}>
+    <article
+      className={`sticky-card ${stickyStatusClass(task)}`}
+      style={
+        {
+          "--sticky-face": color,
+          "--sticky-glue": stickyGlueFor(color),
+        } as CSSProperties
+      }
+    >
       <div className="sticky-glue" aria-hidden />
       <div className="sticky-body">
         <div className="sticky-top">
@@ -132,6 +175,8 @@ function StickyCard({
             }}
           />
         </label>
+
+        <StickyColorPicker value={color} onPick={(next) => handlers.onColor(task, next)} />
 
         <div className="sticky-foot">
           <span>{formatDisplayDate(task.dueDate)}</span>

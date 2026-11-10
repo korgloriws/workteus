@@ -45,6 +45,7 @@ sqlite.exec(`
     due_date TEXT,
     completed_at TEXT,
     notes TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '#fff4a3',
     link TEXT,
     abandon_reason TEXT,
     deleted_at TEXT,

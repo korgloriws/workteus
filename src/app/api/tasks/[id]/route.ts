@@ -54,6 +54,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
     blockedBy?: string | null;
     dueDate?: string | null;
     notes?: string;
+    color?: string;
     link?: string | null;
     serviceId?: number;
   }>(request);

@@ -2,7 +2,12 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Portal } from "@/components/Portal";
-import type { Priority } from "@/lib/types";
+import {
+  DEFAULT_STICKY_COLOR,
+  normalizeStickyColor,
+  STICKY_COLORS,
+  type Priority,
+} from "@/lib/types";
 
 export type TaskFormValues = {
   title: string;
@@ -11,6 +16,7 @@ export type TaskFormValues = {
   blockedBy: string;
   dueDate: string;
   notes: string;
+  color: string;
   link: string;
   serviceId?: number;
 };
@@ -31,11 +37,16 @@ const empty: TaskFormValues = {
   blockedBy: "",
   dueDate: "",
   notes: "",
+  color: DEFAULT_STICKY_COLOR,
   link: "",
 };
 
 export function TaskFormModal({ open, title, services, initial, onClose, onSubmit }: Props) {
-  const [values, setValues] = useState<TaskFormValues>({ ...empty, ...initial });
+  const [values, setValues] = useState<TaskFormValues>({
+    ...empty,
+    ...initial,
+    color: normalizeStickyColor(initial?.color || empty.color),
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -154,6 +165,23 @@ export function TaskFormModal({ open, title, services, initial, onClose, onSubmi
               onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))}
               placeholder="Anotações livres — o que caberia no papel…"
             />
+          </div>
+          <div className="field">
+            <label>Cor do post-it</label>
+            <div className="sticky-colors form-sticky-colors">
+              {STICKY_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`sticky-color-dot ${values.color === c.value ? "active" : ""}`}
+                  style={{ background: c.value }}
+                  title={c.label}
+                  aria-label={c.label}
+                  aria-pressed={values.color === c.value}
+                  onClick={() => setValues((v) => ({ ...v, color: c.value }))}
+                />
+              ))}
+            </div>
           </div>
           <div className="field">
             <label>Link</label>

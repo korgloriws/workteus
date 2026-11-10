@@ -34,6 +34,7 @@ export function ensureSchema() {
       due_date TEXT,
       completed_at TEXT,
       notes TEXT NOT NULL DEFAULT '',
+      color TEXT NOT NULL DEFAULT '#fff4a3',
       link TEXT,
       abandon_reason TEXT,
       deleted_at TEXT,
@@ -76,4 +77,12 @@ export function ensureSchema() {
     CREATE INDEX IF NOT EXISTS idx_events_task ON task_status_events(task_id);
     CREATE INDEX IF NOT EXISTS idx_steps_task ON task_steps(task_id);
   `);
+
+  // Bancos já existentes (Docker volume) — adiciona coluna se faltar
+  const cols = sqlite
+    .prepare(`PRAGMA table_info(tasks)`)
+    .all() as { name: string }[];
+  if (!cols.some((c) => c.name === "color")) {
+    sqlite.exec(`ALTER TABLE tasks ADD COLUMN color TEXT NOT NULL DEFAULT '#fff4a3'`);
+  }
 }

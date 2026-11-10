@@ -41,6 +41,7 @@ export const tasks = sqliteTable("tasks", {
   dueDate: text("due_date"),
   completedAt: text("completed_at"),
   notes: text("notes").notNull().default(""),
+  color: text("color").notNull().default("#fff4a3"),
   link: text("link"),
   abandonReason: text("abandon_reason"),
   deletedAt: text("deleted_at"),

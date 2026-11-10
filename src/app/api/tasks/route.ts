@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     blockedBy?: string | null;
     dueDate?: string | null;
     notes?: string;
+    color?: string;
     link?: string | null;
   }>(request);
 
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       blockedBy: body.blockedBy,
       dueDate: body.dueDate,
       notes: body.notes,
+      color: body.color,
       link: body.link,
     });
     return jsonOk(task, 201);

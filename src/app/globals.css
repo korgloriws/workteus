@@ -1474,15 +1474,38 @@ body:has(.modal-backdrop) .bottom-nav {
 }
 
 .sticky-card.sticky-done {
-  --sticky-face: color-mix(in srgb, var(--sticky-4) 78%, #fff 22%);
-  --sticky-glue: var(--sticky-glue-4);
   opacity: 0.82;
 }
 
 .sticky-card.sticky-gone {
-  --sticky-face: color-mix(in srgb, var(--sticky-3) 72%, #fff 28%);
-  --sticky-glue: var(--sticky-glue-3);
   opacity: 0.74;
+}
+
+.sticky-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
+.form-sticky-colors {
+  margin-top: 0.15rem;
+}
+
+.sticky-color-dot {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #000 18%, transparent);
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent);
+}
+
+.sticky-color-dot.active {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .sticky-card.sticky-note:nth-child(3n) {

@@ -137,6 +137,7 @@ export function ServiceWorkspace({
           blockedBy: values.blockedBy || null,
           dueDate: values.dueDate || null,
           notes: values.notes,
+          color: values.color,
           link: values.link || null,
         }),
       });
@@ -151,6 +152,7 @@ export function ServiceWorkspace({
           blockedBy: values.blockedBy || null,
           dueDate: values.dueDate || null,
           notes: values.notes,
+          color: values.color,
           link: values.link || null,
         }),
       });
@@ -173,6 +175,14 @@ export function ServiceWorkspace({
     await api(`/api/tasks/${task.id}`, {
       method: "PATCH",
       body: JSON.stringify({ notes }),
+    });
+  }
+
+  async function handleColor(task: TaskItem, color: string) {
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, color } : t)));
+    await api(`/api/tasks/${task.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ color }),
     });
   }
 
@@ -244,6 +254,7 @@ export function ServiceWorkspace({
     onDelete: (task: TaskItem) => setReasonOpen({ mode: "delete", task }),
     onSteps: (task: TaskItem) => setStepsTask(task),
     onNotes: handleNotes,
+    onColor: handleColor,
   };
 
   const viewButtons = (
@@ -432,6 +443,7 @@ export function ServiceWorkspace({
                 blockedBy: editing.blockedBy || "",
                 dueDate: editing.dueDate || "",
                 notes: editing.notes || "",
+                color: editing.color || "",
                 link: editing.link || "",
               }
             : undefined

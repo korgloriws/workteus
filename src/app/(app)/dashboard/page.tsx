@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
-import { STATUS_LABELS, type TaskStatus } from "@/lib/types";
+import {
+  DEFAULT_STICKY_COLOR,
+  normalizeStickyColor,
+  STATUS_LABELS,
+  stickyGlueFor,
+  type TaskStatus,
+} from "@/lib/types";
 import { formatDisplayDate } from "@/lib/dates";
 import type { TaskItem } from "@/components/tasks/TaskViews";
 
@@ -21,23 +27,29 @@ type Dashboard = {
   };
 };
 
-function stickyTone(task: TaskItem) {
+function stickyStatusClass(task: TaskItem) {
   if (task.status === "concluido") return "sticky-done";
   if (task.status === "desistido") return "sticky-gone";
-  if (task.status === "pausado") return "sticky-paused";
-  if (task.priority === "alta") return "sticky-hot";
-  if (task.priority === "baixa") return "sticky-calm";
-  return "sticky-note";
+  return "";
 }
 
 function StickyPreview({ task }: { task: TaskItem }) {
+  const color = normalizeStickyColor(task.color || DEFAULT_STICKY_COLOR);
   return (
     <Link
       href={`/services?id=${task.serviceId || ""}`}
       className="dash-sticky-link"
       aria-label={`Abrir ${task.title}`}
     >
-      <article className={`sticky-card ${stickyTone(task)}`}>
+      <article
+        className={`sticky-card ${stickyStatusClass(task)}`}
+        style={
+          {
+            "--sticky-face": color,
+            "--sticky-glue": stickyGlueFor(color),
+          } as CSSProperties
+        }
+      >
         <div className="sticky-glue" aria-hidden />
         <div className="sticky-body">
           <div className="sticky-top">
