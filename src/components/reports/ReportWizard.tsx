@@ -42,7 +42,7 @@ export function ReportWizard({
   const [includeCharts, setIncludeCharts] = useState(true);
   const [includeSteps, setIncludeSteps] = useState(true);
   const [includeDeleted, setIncludeDeleted] = useState(false);
-  const [format, setFormat] = useState<ReportFormat>("pdf");
+  const [reportFormat, setReportFormat] = useState<ReportFormat>("pdf");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -79,7 +79,7 @@ export function ReportWizard({
           reference: format(reference, "yyyy-MM-dd"),
         }),
       });
-      exportReport(report, format);
+      exportReport(report, reportFormat);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao gerar relatório");
@@ -183,8 +183,8 @@ export function ReportWizard({
                   <button
                     key={item.id}
                     type="button"
-                    className={`btn sm ${format === item.id ? "" : "secondary"}`}
-                    onClick={() => setFormat(item.id)}
+                    className={`btn sm ${reportFormat === item.id ? "" : "secondary"}`}
+                    onClick={() => setReportFormat(item.id)}
                   >
                     {item.label}
                   </button>
