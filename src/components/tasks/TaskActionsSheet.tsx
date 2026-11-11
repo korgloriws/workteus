@@ -3,9 +3,10 @@
 import { useEffect } from "react";
 import { Portal } from "@/components/Portal";
 import { STATUS_ACTIONS } from "@/lib/status";
-import { formatPeriodKeyLabel, isCarriedOverTask } from "@/lib/dates";
+import { formatDisplayDateTime, formatPeriodKeyLabel, isCarriedOverTask } from "@/lib/dates";
 import { STATUS_LABELS, type TaskStatus } from "@/lib/types";
 import type { TaskItem } from "./TaskViews";
+import { StatusHistory } from "./StatusHistory";
 
 type Props = {
   open: boolean;
@@ -64,6 +65,16 @@ export function TaskActionsSheet({
                 </span>
               ) : null}
             </div>
+            {task.completedAt ? (
+              <p className="muted" style={{ margin: "0.45rem 0 0" }}>
+                Concluída em {formatDisplayDateTime(task.completedAt)}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="sheet-status-history">
+            <strong className="sheet-status-history-title">Histórico</strong>
+            <StatusHistory taskId={task.id} />
           </div>
 
           <div className="sheet-actions">

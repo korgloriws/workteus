@@ -26,6 +26,7 @@ function sessionCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
+    // Em http://IP:porta o browser descarta cookie Secure=true
     secure: cookieSecure(),
     path: "/",
     maxAge,

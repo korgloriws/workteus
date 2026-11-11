@@ -54,6 +54,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (!existing) return jsonError("Serviço não encontrado", 404);
 
   const name = body.name?.trim() || existing.name;
+  const nextColor =
+    typeof body.color === "string" && /^#[0-9a-fA-F]{6}$/.test(body.color.trim())
+      ? body.color.trim().toLowerCase()
+      : existing.color;
   const patch = {
     name,
     slug: body.name ? slugify(name) : existing.slug,
@@ -62,7 +66,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       : body.name
         ? serviceCodeFromName(name)
         : existing.code,
-    color: body.color || existing.color,
+    color: nextColor,
     sortOrder: body.sortOrder ?? existing.sortOrder,
     updatedAt: new Date().toISOString().replace("T", " ").slice(0, 19),
   };

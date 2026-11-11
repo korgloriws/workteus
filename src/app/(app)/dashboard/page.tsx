@@ -13,6 +13,7 @@ import {
 } from "@/lib/types";
 import {
   formatDisplayDate,
+  formatDisplayDateTime,
   formatPeriodKeyLabel,
   getPeriodRange,
   isCarriedOverTask,
@@ -92,7 +93,11 @@ function StickyPreview({
           </div>
           {task.notes ? <p className="sticky-meta">{task.notes.slice(0, 90)}</p> : null}
           <div className="sticky-foot">
-            <span className="dash-sticky-meta">{formatDisplayDate(task.dueDate)}</span>
+            <span className="dash-sticky-meta">
+              {task.status === "concluido" && task.completedAt
+                ? `Concluído ${formatDisplayDateTime(task.completedAt)}`
+                : formatDisplayDate(task.dueDate)}
+            </span>
           </div>
         </div>
       </article>

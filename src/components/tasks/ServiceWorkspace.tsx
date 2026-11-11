@@ -238,15 +238,19 @@ export function ServiceWorkspace({
   }
 
   async function saveService() {
+    const color = /^#[0-9a-fA-F]{6}$/.test(serviceForm.color)
+      ? serviceForm.color.toLowerCase()
+      : "#1a1a1a";
     if (serviceForm.mode === "edit" && serviceId) {
-      await api(`/api/services/${serviceId}`, {
+      const updated = await api<Service>(`/api/services/${serviceId}`, {
         method: "PATCH",
-        body: JSON.stringify({ name: serviceForm.name, color: serviceForm.color }),
+        body: JSON.stringify({ name: serviceForm.name, color }),
       });
+      setServices((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
     } else {
       await api("/api/services", {
         method: "POST",
-        body: JSON.stringify({ name: serviceForm.name, color: serviceForm.color }),
+        body: JSON.stringify({ name: serviceForm.name, color }),
       });
     }
     setServiceForm({ open: false, mode: "create", name: "", color: "#1a1a1a" });
@@ -364,11 +368,14 @@ export function ServiceWorkspace({
             onClick={() => {
               const current = services.find((s) => s.id === serviceId);
               if (!current) return;
+              const color = /^#[0-9a-fA-F]{6}$/.test(current.color || "")
+                ? current.color
+                : "#1a1a1a";
               setServiceForm({
                 open: true,
                 mode: "edit",
                 name: current.name,
-                color: current.color,
+                color,
               });
             }}
           >
@@ -500,6 +507,8 @@ export function ServiceWorkspace({
         key={editing ? `edit-${editing.id}` : `new-${formOpen}`}
         open={formOpen}
         title={editing ? "Editar demanda" : "Nova demanda"}
+        taskId={editing?.id}
+        completedAt={editing?.completedAt}
         services={isGeral || !serviceId ? services : undefined}
         initial={
           editing

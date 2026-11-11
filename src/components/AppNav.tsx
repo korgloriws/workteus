@@ -18,6 +18,7 @@ export function AppNav({ username }: { username: string }) {
   const links = [
     { href: "/dashboard", label: "Hoje", short: "Hoje" },
     { href: "/services", label: "Pastas", short: "Pastas" },
+    { href: "/notes", label: "Bloco", short: "Bloco" },
     { href: "/stats", label: "Relatórios", short: "Relatos" },
   ];
 

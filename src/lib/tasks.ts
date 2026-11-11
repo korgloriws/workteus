@@ -5,7 +5,13 @@ import { nextTaskCode } from "./codes";
 import { canTransition } from "./status";
 import type { PeriodMode, Priority, TaskStatus } from "./types";
 import { normalizeStickyColor } from "./types";
-import { getPeriodRange, periodKeyFromDate, todayString, toDateString } from "./dates";
+import {
+  getPeriodRange,
+  nowLocalString,
+  periodKeyFromDate,
+  todayString,
+  toDateString,
+} from "./dates";
 
 const OPEN_STATUSES_SQL = sql`${tasks.status} IN ('a_fazer','em_andamento','pausado','pulado')`;
 
@@ -107,26 +113,30 @@ export async function listTasks(opts: {
     .from(tasks)
     .leftJoin(services, eq(tasks.serviceId, services.id))
     .where(where)
-    // Fila: ativas no topo; pulado vai pro fim da fila aberta; fechadas depois.
-    // Dentro do mesmo status, ordem natural de inclusão.
+    // Fila: ativas (protocolo/createdAt); pausado/pulado no fim (queue_bump_at);
+    // concluídas/desistidas depois.
     .orderBy(
       sql`CASE ${tasks.status}
         WHEN 'em_andamento' THEN 0
         WHEN 'a_fazer' THEN 1
         WHEN 'pausado' THEN 2
-        WHEN 'pulado' THEN 3
-        WHEN 'concluido' THEN 4
-        WHEN 'desistido' THEN 5
-        ELSE 6
+        WHEN 'pulado' THEN 2
+        WHEN 'concluido' THEN 3
+        WHEN 'desistido' THEN 4
+        ELSE 5
       END`,
       // Arrastadas de outro mês sobem; não usar literal numérico no ORDER BY
-      // (SQLite trata "ORDER BY 0" como índice de coluna e quebra)
       ...(opts.periodMode === "mes"
         ? [
             sql`CASE WHEN ${tasks.periodKey} = ${periodKeyFromDate(reference)} THEN 1 ELSE 0 END`,
           ]
         : []),
-      asc(tasks.createdAt),
+      // Ativas: ordem de protocolo. Pausado/pulado: quem foi parado por último fica no fim.
+      sql`CASE
+        WHEN ${tasks.status} IN ('pausado', 'pulado')
+          THEN COALESCE(${tasks.queueBumpAt}, ${tasks.updatedAt}, ${tasks.createdAt})
+        ELSE ${tasks.createdAt}
+      END`,
       asc(tasks.id),
     );
 }
@@ -175,6 +185,7 @@ export async function createTask(input: {
     fromStatus: null,
     toStatus: "a_fazer",
     reason: "Criação",
+    createdAt: nowLocalString(),
   });
 
   return task;
@@ -230,19 +241,32 @@ export async function changeTaskStatus(
     throw new Error(`Transição inválida: ${from} → ${toStatus}`);
   }
 
+  const at = nowLocalString();
   const patch: Record<string, unknown> = {
     status: toStatus,
-    updatedAt: sql`(datetime('now'))`,
+    updatedAt: at,
   };
 
   if (toStatus === "concluido") {
-    patch.completedAt = sql`(datetime('now'))`;
+    patch.completedAt = at;
   } else if (from === "concluido") {
     patch.completedAt = null;
   }
 
   if (toStatus === "desistido") {
     patch.abandonReason = reason || null;
+  }
+
+  // Pausar/pular: vai pro fim da fila. Retomar/avançar: volta ao protocolo (createdAt).
+  if (toStatus === "pausado" || toStatus === "pulado") {
+    patch.queueBumpAt = at;
+  } else if (
+    toStatus === "a_fazer" ||
+    toStatus === "em_andamento" ||
+    toStatus === "concluido" ||
+    toStatus === "desistido"
+  ) {
+    patch.queueBumpAt = null;
   }
 
   if (toStatus === "pausado" && reason) {
@@ -256,6 +280,7 @@ export async function changeTaskStatus(
     fromStatus: from,
     toStatus,
     reason: reason || null,
+    createdAt: at,
   });
 
   return updated;
@@ -265,12 +290,13 @@ export async function softDeleteTask(id: number, reason?: string | null) {
   const [existing] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
   if (!existing || existing.deletedAt) throw new Error("Tarefa não encontrada");
 
+  const at = nowLocalString();
   const [updated] = await db
     .update(tasks)
     .set({
-      deletedAt: sql`(datetime('now'))`,
+      deletedAt: at,
       deleteReason: reason || null,
-      updatedAt: sql`(datetime('now'))`,
+      updatedAt: at,
     })
     .where(eq(tasks.id, id))
     .returning();
@@ -280,6 +306,7 @@ export async function softDeleteTask(id: number, reason?: string | null) {
     fromStatus: existing.status,
     toStatus: "desistido",
     reason: reason ? `Excluído: ${reason}` : "Excluído",
+    createdAt: at,
   });
 
   return updated;

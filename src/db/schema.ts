@@ -44,6 +44,8 @@ export const tasks = sqliteTable("tasks", {
   color: text("color").notNull().default("#fff4a3"),
   link: text("link"),
   abandonReason: text("abandon_reason"),
+  /** Quando pausou/pulou — manda pro fim da fila sem perder o createdAt de protocolo. */
+  queueBumpAt: text("queue_bump_at"),
   deletedAt: text("deleted_at"),
   deleteReason: text("delete_reason"),
   createdAt: text("created_at")
@@ -96,9 +98,28 @@ export const viewPreferences = sqliteTable("view_preferences", {
     .default(sql`(datetime('now'))`),
 });
 
+/** Bloco de notas em post-its (infos, senhas, destaques). */
+export const stickyNotes = sqliteTable("sticky_notes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull().default(""),
+  body: text("body").notNull().default(""),
+  color: text("color").notNull().default("#fff4a3"),
+  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+  sensitive: integer("sensitive", { mode: "boolean" }).notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  archivedAt: text("archived_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export type User = typeof users.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type TaskStep = typeof taskSteps.$inferSelect;
 export type TaskStatusEvent = typeof taskStatusEvents.$inferSelect;
 export type ViewPreference = typeof viewPreferences.$inferSelect;
+export type StickyNote = typeof stickyNotes.$inferSelect;

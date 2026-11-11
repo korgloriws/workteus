@@ -58,7 +58,10 @@ export async function POST(request: Request) {
       name,
       slug,
       code,
-      color: body.color || "#1a1a1a",
+      color:
+        typeof body.color === "string" && /^#[0-9a-fA-F]{6}$/.test(body.color.trim())
+          ? body.color.trim().toLowerCase()
+          : "#1a1a1a",
       sortOrder,
     })
     .returning();

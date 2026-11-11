@@ -1750,6 +1750,53 @@ body:has(.modal-backdrop) .bottom-nav {
   margin-top: 0.55rem;
 }
 
+.status-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.status-history-item {
+  padding-bottom: 0.45rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+.status-history-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.status-history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.status-history-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+}
+
+.status-history-empty {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.sheet-status-history {
+  padding: 0 1.1rem 0.75rem;
+}
+
+.sheet-status-history-title {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+}
+
 .sticky-notes-label {
   display: block;
   margin-top: 0.1rem;
@@ -1839,6 +1886,197 @@ body:has(.modal-backdrop) .bottom-nav {
 .empty-desk .muted {
   display: block;
   margin-top: 0.35rem;
+}
+
+.notes-sensitive-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.note-composer {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.note-composer-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.note-composer-title {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-display), serif;
+  font-size: 1.1rem;
+  padding: 0.65rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.note-format-hint {
+  font-size: 0.78rem;
+}
+
+.note-composer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.notepad {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.notepad-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.notepad-surface-wrap {
+  position: relative;
+}
+
+.notepad-placeholder {
+  position: absolute;
+  inset: 0.7rem 0.8rem auto;
+  color: var(--muted);
+  pointer-events: none;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.notepad-surface {
+  min-height: 8.5rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.7rem 0.8rem;
+  line-height: 1.45;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+
+.notepad-surface:focus {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+}
+
+.notepad-surface[data-disabled="1"] {
+  opacity: 0.85;
+}
+
+.notepad-compact .notepad-surface {
+  min-height: 6.2rem;
+  background: transparent;
+  border-color: color-mix(in srgb, var(--sticky-ink) 22%, transparent);
+  color: var(--sticky-text);
+  padding: 0.45rem 0.35rem;
+}
+
+.notepad-compact .notepad-placeholder {
+  color: color-mix(in srgb, var(--sticky-ink) 55%, transparent);
+  inset: 0.45rem 0.35rem auto;
+}
+
+.notepad-compact .notepad-toolbar .btn.ghost {
+  color: var(--sticky-text);
+}
+
+.notepad-surface ul,
+.notepad-surface ol {
+  margin: 0.25rem 0 0.25rem 1.1rem;
+  padding: 0;
+}
+
+.notepad-surface p {
+  margin: 0 0 0.35rem;
+}
+
+.note-masked-title {
+  margin: 0.15rem 0 0.45rem;
+  font-family: var(--font-display), serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  color: var(--sticky-text);
+}
+
+.notes-board {
+  margin-top: 0.25rem;
+}
+
+.note-sticky-pinned {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.note-sensitive-badge {
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--sticky-ink);
+  opacity: 0.75;
+}
+
+.note-title-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-display), serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  color: var(--sticky-text);
+  padding: 0;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.note-title-input:focus {
+  outline: none;
+}
+
+.note-mask {
+  width: 100%;
+  min-height: 6.5rem;
+  border: 1px dashed color-mix(in srgb, var(--sticky-ink) 35%, transparent);
+  background: color-mix(in srgb, #000 6%, transparent);
+  color: var(--sticky-ink);
+  font: inherit;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0.85rem;
+  text-align: left;
+}
+
+.note-action-on {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.stat-card-sub {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.chart-panel-copy {
+  margin: 0.25rem 0 0.65rem;
+  font-size: 0.85rem;
 }
 
 .dash-board {

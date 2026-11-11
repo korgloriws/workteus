@@ -37,6 +37,7 @@ export function ensureSchema() {
       color TEXT NOT NULL DEFAULT '#fff4a3',
       link TEXT,
       abandon_reason TEXT,
+      queue_bump_at TEXT,
       deleted_at TEXT,
       delete_reason TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -70,12 +71,26 @@ export function ensureSchema() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS sticky_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL DEFAULT '',
+      body TEXT NOT NULL DEFAULT '',
+      color TEXT NOT NULL DEFAULT '#fff4a3',
+      pinned INTEGER NOT NULL DEFAULT 0,
+      sensitive INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      archived_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_tasks_service ON tasks(service_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_period ON tasks(period_key);
     CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date);
     CREATE INDEX IF NOT EXISTS idx_events_task ON task_status_events(task_id);
     CREATE INDEX IF NOT EXISTS idx_steps_task ON task_steps(task_id);
+    CREATE INDEX IF NOT EXISTS idx_sticky_notes_archived ON sticky_notes(archived_at);
   `);
 
   // Bancos já existentes (Docker volume) — adiciona coluna se faltar
@@ -84,5 +99,8 @@ export function ensureSchema() {
     .all() as { name: string }[];
   if (!cols.some((c) => c.name === "color")) {
     sqlite.exec(`ALTER TABLE tasks ADD COLUMN color TEXT NOT NULL DEFAULT '#fff4a3'`);
+  }
+  if (!cols.some((c) => c.name === "queue_bump_at")) {
+    sqlite.exec(`ALTER TABLE tasks ADD COLUMN queue_bump_at TEXT`);
   }
 }

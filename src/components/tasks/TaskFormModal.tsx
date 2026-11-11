@@ -2,12 +2,14 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Portal } from "@/components/Portal";
+import { formatDisplayDateTime } from "@/lib/dates";
 import {
   DEFAULT_STICKY_COLOR,
   normalizeStickyColor,
   STICKY_COLORS,
   type Priority,
 } from "@/lib/types";
+import { StatusHistory } from "./StatusHistory";
 
 export type TaskFormValues = {
   title: string;
@@ -24,6 +26,8 @@ export type TaskFormValues = {
 type Props = {
   open: boolean;
   title: string;
+  taskId?: number;
+  completedAt?: string | null;
   services?: { id: number; name: string }[];
   initial?: Partial<TaskFormValues>;
   onClose: () => void;
@@ -41,7 +45,16 @@ const empty: TaskFormValues = {
   link: "",
 };
 
-export function TaskFormModal({ open, title, services, initial, onClose, onSubmit }: Props) {
+export function TaskFormModal({
+  open,
+  title,
+  taskId,
+  completedAt,
+  services,
+  initial,
+  onClose,
+  onSubmit,
+}: Props) {
   const [values, setValues] = useState<TaskFormValues>({
     ...empty,
     ...initial,
@@ -191,6 +204,17 @@ export function TaskFormModal({ open, title, services, initial, onClose, onSubmi
               placeholder="https://..."
             />
           </div>
+          {completedAt ? (
+            <p className="muted" style={{ margin: 0 }}>
+              Concluída em {formatDisplayDateTime(completedAt)}
+            </p>
+          ) : null}
+          {taskId ? (
+            <div className="field">
+              <label>Histórico de status</label>
+              <StatusHistory taskId={taskId} />
+            </div>
+          ) : null}
           {error ? <p style={{ color: "var(--danger)", margin: 0 }}>{error}</p> : null}
         </div>
 

@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Garante o mesmo fallback do runtime se AUTH_SECRET não vier no build
+ARG AUTH_SECRET=workteus-dev-secret-change-me
+ENV AUTH_SECRET=$AUTH_SECRET
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runner

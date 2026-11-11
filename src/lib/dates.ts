@@ -81,12 +81,32 @@ export function toDateString(date: Date): string {
 export function formatDisplayDate(value?: string | null): string {
   if (!value) return "—";
   try {
-    return format(parseISO(value.length === 10 ? `${value}T12:00:00` : value), "dd/MM/yyyy", {
-      locale: ptBR,
-    });
+    const normalized =
+      value.length === 10
+        ? `${value}T12:00:00`
+        : value.includes("T")
+          ? value
+          : value.replace(" ", "T");
+    return format(parseISO(normalized), "dd/MM/yyyy", { locale: ptBR });
   } catch {
     return value;
   }
+}
+
+/** Ex.: 2026-11-11 14:30:00 → "11/11/2026 14:30" */
+export function formatDisplayDateTime(value?: string | null): string {
+  if (!value) return "—";
+  try {
+    const normalized = value.includes("T") ? value : value.replace(" ", "T");
+    return format(parseISO(normalized), "dd/MM/yyyy HH:mm", { locale: ptBR });
+  } catch {
+    return value;
+  }
+}
+
+/** Timestamp local no formato do SQLite (sem timezone). */
+export function nowLocalString(date = new Date()): string {
+  return format(date, "yyyy-MM-dd HH:mm:ss");
 }
 
 export function todayString(): string {

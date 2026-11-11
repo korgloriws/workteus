@@ -19,17 +19,35 @@ function LoginForm() {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { error?: string; ok?: boolean } = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          setError("Resposta inválida do servidor");
+          setLoading(false);
+          return;
+        }
+      }
       if (!res.ok) {
         setError(data.error || "Falha no login");
         setLoading(false);
         return;
       }
-      // Navegação completa para garantir que o cookie de sessão vá na próxima request
-      const next = params.get("next") || "/dashboard";
+      // Navegação completa para o cookie de sessão ir na próxima request
+      const rawNext = params.get("next") || "/dashboard";
+      const next =
+        !rawNext.startsWith("/") || rawNext.startsWith("//") || rawNext.startsWith("/login")
+          ? "/dashboard"
+          : rawNext;
       window.location.assign(next);
     } catch {
       setError("Não foi possível entrar");

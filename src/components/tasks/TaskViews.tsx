@@ -22,6 +22,7 @@ import {
 import {
   carryOriginLabel,
   formatDisplayDate,
+  formatDisplayDateTime,
   formatPeriodKeyLabel,
   isCarriedOverTask,
 } from "@/lib/dates";
@@ -183,7 +184,13 @@ function StickyCard({
         </label>
 
         <div className="sticky-foot">
-          <span>{formatDisplayDate(task.dueDate)}</span>
+          <span>
+            {task.status === "concluido" && task.completedAt
+              ? `Concluído ${formatDisplayDateTime(task.completedAt)}`
+              : task.status === "desistido"
+                ? "Desistido"
+                : `Alvo ${formatDisplayDate(task.dueDate)}`}
+          </span>
           <StepsHint task={task} />
         </div>
       </div>
@@ -306,6 +313,7 @@ export function TaskTableView({
               <th>Prioridade</th>
               <th>Etapas</th>
               <th>Alvo</th>
+              <th>Concluído</th>
               <th></th>
             </tr>
           </thead>
@@ -345,6 +353,9 @@ export function TaskTableView({
                     : "—"}
                 </td>
                 <td>{formatDisplayDate(task.dueDate)}</td>
+                <td>
+                  {task.completedAt ? formatDisplayDateTime(task.completedAt) : "—"}
+                </td>
                 <td>
                   <button
                     type="button"

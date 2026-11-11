@@ -1,6 +1,9 @@
 services:
   workteus:
-    build: .
+    build:
+      context: .
+      args:
+        AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
     ports:
       - "4030:4030"
     environment:

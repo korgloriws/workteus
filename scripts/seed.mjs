@@ -48,6 +48,7 @@ sqlite.exec(`
     color TEXT NOT NULL DEFAULT '#fff4a3',
     link TEXT,
     abandon_reason TEXT,
+    queue_bump_at TEXT,
     deleted_at TEXT,
     delete_reason TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -105,11 +106,7 @@ const seeds = [
   { name: "Pessoal", slug: "pessoal", code: "PES", color: "#a58b5c", sort: 3 },
 ];
 
-const updateColors = sqlite.prepare(`UPDATE services SET color = ? WHERE slug = ?`);
-for (const s of seeds) {
-  updateColors.run(s.color, s.slug);
-}
-
+// Só cria pastas novas — NÃO sobrescreve cor/nome já personalizados no banco
 const insertService = sqlite.prepare(
   `INSERT OR IGNORE INTO services (name, slug, code, color, sort_order) VALUES (?, ?, ?, ?, ?)`,
 );
