@@ -277,9 +277,20 @@ export function ServiceWorkspace({
     onColor: handleColor,
   };
 
+  async function handleReorder(orderedIds: number[]) {
+    setTasks((prev) => {
+      const byId = new Map(prev.map((t) => [t.id, t]));
+      return orderedIds.map((id) => byId.get(id)).filter(Boolean) as TaskItem[];
+    });
+    await api("/api/tasks/reorder", {
+      method: "POST",
+      body: JSON.stringify({ orderedIds }),
+    });
+  }
+
   const viewButtons = isGeral ? (
     <span className="muted" style={{ fontSize: "0.85rem" }}>
-      Visão: notas · ordem de inclusão
+      Visão: notas · ordem manual
     </span>
   ) : (
     <>
@@ -349,7 +360,7 @@ export function ServiceWorkspace({
           <h1 className="hero-title">Pastas de trabalho</h1>
           <p className="desk-copy">
             {isGeral
-              ? "Aba Geral — todas as pastas na ordem em que foram anotadas."
+              ? "Aba Geral — todas as pastas; arraste para organizar a ordem."
               : "Cada demanda é um post-it na pasta — anote rápido e organize depois."}
           </p>
         </div>
@@ -499,6 +510,7 @@ export function ServiceWorkspace({
           tasks={tasks}
           showService={isGeral}
           viewPeriodKey={activePeriod === "mes" ? format(reference, "yyyy-MM") : undefined}
+          onReorder={handleReorder}
           {...handlers}
         />
       )}

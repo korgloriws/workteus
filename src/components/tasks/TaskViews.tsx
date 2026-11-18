@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -46,6 +51,7 @@ export type TaskItem = {
   notes?: string;
   color?: string | null;
   link?: string | null;
+  sortOrder?: number;
   serviceName?: string | null;
   serviceColor?: string | null;
   stepsTotal?: number;
@@ -78,21 +84,44 @@ function StepsHint({ task }: { task: TaskItem }) {
   );
 }
 
+function isStickyInteractiveTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    !!target.closest("button, a, textarea, input, select, label, .sticky-toolbar")
+  );
+}
+
 function StickyCard({
   task,
   isMobile,
   showService,
   viewPeriodKey,
+  canReorder = false,
+  dragging = false,
+  dragOver = false,
   onOpenSheet,
   onOpenColor,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  onMove,
   ...handlers
 }: {
   task: TaskItem;
   isMobile: boolean;
   showService?: boolean;
   viewPeriodKey?: string;
+  canReorder?: boolean;
+  dragging?: boolean;
+  dragOver?: boolean;
   onOpenSheet: (task: TaskItem) => void;
   onOpenColor: (task: TaskItem) => void;
+  onDragStart?: (taskId: number) => void;
+  onDragOver?: (taskId: number) => void;
+  onDrop?: (taskId: number) => void;
+  onDragEnd?: () => void;
+  onMove?: (taskId: number, dir: -1 | 1) => void;
 } & Handlers) {
   const color = normalizeStickyColor(task.color || DEFAULT_STICKY_COLOR);
   const [notes, setNotes] = useState(task.notes || "");
@@ -114,20 +143,68 @@ function StickyCard({
     }
   }
 
+  function handleDragStart(e: DragEvent) {
+    if (!canReorder) return;
+    if (isStickyInteractiveTarget(e.target)) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(task.id));
+    onDragStart?.(task.id);
+  }
+
   return (
     <article
-      className={`sticky-card ${stickyStatusClass(task)}${carriedOver ? " sticky-carried" : ""}`}
+      data-task-id={task.id}
+      className={`sticky-card sticky-reorder ${stickyStatusClass(task)}${
+        carriedOver ? " sticky-carried" : ""
+      }${dragging ? " sticky-dragging" : ""}${dragOver ? " sticky-drag-over" : ""}`}
       style={
         {
           "--sticky-face": color,
           "--sticky-glue": stickyGlueFor(color),
         } as CSSProperties
       }
+      draggable={canReorder}
+      onDragStart={handleDragStart}
+      onDragOver={(e) => {
+        if (!canReorder) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        onDragOver?.(task.id);
+      }}
+      onDrop={(e) => {
+        if (!canReorder) return;
+        e.preventDefault();
+        onDrop?.(task.id);
+      }}
+      onDragEnd={() => onDragEnd?.()}
     >
       <div className="sticky-glue" aria-hidden />
       <div className="sticky-body">
         <div className="sticky-top">
           <span className="sticky-code">{task.code}</span>
+          {canReorder && isMobile ? (
+            <div className="sticky-reorder-actions">
+              <button
+                type="button"
+                className="btn ghost sm"
+                aria-label="Mover para cima"
+                onClick={() => onMove?.(task.id, -1)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                aria-label="Mover para baixo"
+                onClick={() => onMove?.(task.id, 1)}
+              >
+                ↓
+              </button>
+            </div>
+          ) : null}
           <span className={`status-${task.status}`}>
             {STATUS_LABELS[task.status as TaskStatus]}
           </span>
@@ -172,6 +249,8 @@ function StickyCard({
             rows={3}
             placeholder="Escrever no post-it…"
             disabled={savingNotes}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
             onChange={(e) => setNotes(e.target.value)}
             onBlur={commitNotes}
             onKeyDown={(e) => {
@@ -224,13 +303,55 @@ export function TaskListView({
   tasks,
   showService = false,
   viewPeriodKey,
+  onReorder,
   ...handlers
-}: { tasks: TaskItem[]; showService?: boolean; viewPeriodKey?: string } & Handlers) {
+}: {
+  tasks: TaskItem[];
+  showService?: boolean;
+  viewPeriodKey?: string;
+  onReorder?: (orderedIds: number[]) => void | Promise<void>;
+} & Handlers) {
   const isMobile = useIsMobile();
+  const canReorder = typeof onReorder === "function";
   const [sheetTask, setSheetTask] = useState<TaskItem | null>(null);
   const [colorTask, setColorTask] = useState<TaskItem | null>(null);
+  const [localTasks, setLocalTasks] = useState(tasks);
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
 
-  if (!tasks.length) {
+  useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
+
+  async function applyOrder(next: TaskItem[]) {
+    setLocalTasks(next);
+    if (!onReorder) return;
+    await onReorder(next.map((t) => t.id));
+  }
+
+  function moveTask(fromId: number, toId: number) {
+    if (fromId === toId) return;
+    const from = localTasks.findIndex((t) => t.id === fromId);
+    const to = localTasks.findIndex((t) => t.id === toId);
+    if (from < 0 || to < 0) return;
+    const next = [...localTasks];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    void applyOrder(next);
+  }
+
+  function nudgeTask(taskId: number, dir: -1 | 1) {
+    const from = localTasks.findIndex((t) => t.id === taskId);
+    if (from < 0) return;
+    const to = from + dir;
+    if (to < 0 || to >= localTasks.length) return;
+    const next = [...localTasks];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    void applyOrder(next);
+  }
+
+  if (!localTasks.length) {
     return (
       <div className="empty-desk panel panel-pad">
         <p>Mesa limpa neste filtro.</p>
@@ -242,15 +363,30 @@ export function TaskListView({
   return (
     <>
       <div className="sticky-board">
-        {tasks.map((task) => (
+        {localTasks.map((task) => (
           <StickyCard
             key={task.id}
             task={task}
             isMobile={isMobile}
             showService={showService}
             viewPeriodKey={viewPeriodKey}
+            canReorder={canReorder}
+            dragging={dragId === task.id}
+            dragOver={overId === task.id && dragId !== task.id}
             onOpenSheet={setSheetTask}
             onOpenColor={setColorTask}
+            onDragStart={(id) => setDragId(id)}
+            onDragOver={(id) => setOverId(id)}
+            onDrop={(id) => {
+              if (dragId != null) moveTask(dragId, id);
+              setDragId(null);
+              setOverId(null);
+            }}
+            onDragEnd={() => {
+              setDragId(null);
+              setOverId(null);
+            }}
+            onMove={nudgeTask}
             {...handlers}
           />
         ))}

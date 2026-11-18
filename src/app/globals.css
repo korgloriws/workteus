@@ -1516,6 +1516,26 @@ body:has(.modal-backdrop) .bottom-nav {
   transform: rotate(-1.2deg);
 }
 
+.sticky-reorder-actions {
+  display: inline-flex;
+  gap: 0.1rem;
+  margin-right: auto;
+}
+
+.sticky-card.sticky-reorder {
+  cursor: grab;
+}
+
+.sticky-card.sticky-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.sticky-card.sticky-drag-over {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .sticky-card:hover,
 .sticky-card:focus-within {
   transform: translateY(-3px) rotate(0deg);

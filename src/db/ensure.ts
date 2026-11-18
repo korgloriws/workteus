@@ -38,6 +38,7 @@ export function ensureSchema() {
       link TEXT,
       abandon_reason TEXT,
       queue_bump_at TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       delete_reason TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -103,4 +104,15 @@ export function ensureSchema() {
   if (!cols.some((c) => c.name === "queue_bump_at")) {
     sqlite.exec(`ALTER TABLE tasks ADD COLUMN queue_bump_at TEXT`);
   }
+  if (!cols.some((c) => c.name === "sort_order")) {
+    sqlite.exec(`ALTER TABLE tasks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`);
+    // Backfill estável (não usa numeração de protocolo/sequence).
+    sqlite.exec(`
+      UPDATE tasks
+      SET sort_order = id
+      WHERE sort_order = 0 OR sort_order IS NULL
+    `);
+  }
+
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_sort ON tasks(sort_order)`);
 }

@@ -49,6 +49,7 @@ sqlite.exec(`
     link TEXT,
     abandon_reason TEXT,
     queue_bump_at TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     deleted_at TEXT,
     delete_reason TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { services, taskStatusEvents, tasks } from "@/db/schema";
 import { nextTaskCode } from "./codes";
@@ -100,6 +100,7 @@ export async function listTasks(opts: {
       color: tasks.color,
       link: tasks.link,
       abandonReason: tasks.abandonReason,
+      sortOrder: tasks.sortOrder,
       deletedAt: tasks.deletedAt,
       deleteReason: tasks.deleteReason,
       createdAt: tasks.createdAt,
@@ -113,32 +114,8 @@ export async function listTasks(opts: {
     .from(tasks)
     .leftJoin(services, eq(tasks.serviceId, services.id))
     .where(where)
-    // Fila: ativas (protocolo/createdAt); pausado/pulado no fim (queue_bump_at);
-    // concluídas/desistidas depois.
-    .orderBy(
-      sql`CASE ${tasks.status}
-        WHEN 'em_andamento' THEN 0
-        WHEN 'a_fazer' THEN 1
-        WHEN 'pausado' THEN 2
-        WHEN 'pulado' THEN 2
-        WHEN 'concluido' THEN 3
-        WHEN 'desistido' THEN 4
-        ELSE 5
-      END`,
-      // Arrastadas de outro mês sobem; não usar literal numérico no ORDER BY
-      ...(opts.periodMode === "mes"
-        ? [
-            sql`CASE WHEN ${tasks.periodKey} = ${periodKeyFromDate(reference)} THEN 1 ELSE 0 END`,
-          ]
-        : []),
-      // Ativas: ordem de protocolo. Pausado/pulado: quem foi parado por último fica no fim.
-      sql`CASE
-        WHEN ${tasks.status} IN ('pausado', 'pulado')
-          THEN COALESCE(${tasks.queueBumpAt}, ${tasks.updatedAt}, ${tasks.createdAt})
-        ELSE ${tasks.createdAt}
-      END`,
-      asc(tasks.id),
-    );
+    // Ordem manual (drag) — não usa sequence/código.
+    .orderBy(asc(tasks.sortOrder), asc(tasks.id));
 }
 
 export async function createTask(input: {
@@ -161,6 +138,11 @@ export async function createTask(input: {
 
   const { code, sequence, periodKey } = await nextTaskCode(service.code, service.id);
 
+  const [maxRow] = await db
+    .select({ m: sql<number>`coalesce(max(${tasks.sortOrder}), 0)` })
+    .from(tasks);
+  const sortOrder = Number(maxRow?.m || 0) + 1;
+
   const [task] = await db
     .insert(tasks)
     .values({
@@ -177,6 +159,7 @@ export async function createTask(input: {
       color: normalizeStickyColor(input.color),
       link: input.link || null,
       status: "a_fazer",
+      sortOrder,
     })
     .returning();
 
@@ -257,9 +240,13 @@ export async function changeTaskStatus(
     patch.abandonReason = reason || null;
   }
 
-  // Pausar/pular: vai pro fim da fila. Retomar/avançar: volta ao protocolo (createdAt).
+  // Pausar/pular: vai pro fim da fila (sort_order). Retomar: só limpa o bump.
   if (toStatus === "pausado" || toStatus === "pulado") {
+    const [maxRow] = await db
+      .select({ m: sql<number>`coalesce(max(${tasks.sortOrder}), 0)` })
+      .from(tasks);
     patch.queueBumpAt = at;
+    patch.sortOrder = Number(maxRow?.m || 0) + 1;
   } else if (
     toStatus === "a_fazer" ||
     toStatus === "em_andamento" ||
@@ -284,6 +271,45 @@ export async function changeTaskStatus(
   });
 
   return updated;
+}
+
+/** Persiste a ordem manual da lista visível (drag). Mantém os ranks existentes. */
+export async function reorderTasks(orderedIds: number[]) {
+  const ids = orderedIds.filter((id) => Number.isFinite(id) && id > 0);
+  if (ids.length < 2) return { updated: 0 };
+
+  const rows = await db
+    .select({ id: tasks.id, sortOrder: tasks.sortOrder })
+    .from(tasks)
+    .where(and(inArray(tasks.id, ids), isNull(tasks.deletedAt)));
+
+  if (rows.length < 2) return { updated: 0 };
+
+  const byId = new Map(rows.map((r) => [r.id, r.sortOrder]));
+  const present = ids.filter((id) => byId.has(id));
+  if (present.length < 2) return { updated: 0 };
+
+  const ranks = present
+    .map((id) => byId.get(id)!)
+    .sort((a, b) => a - b);
+
+  // Se todos iguais (legado), gera ranks únicos.
+  const uniqueRanks =
+    ranks[0] === ranks[ranks.length - 1]
+      ? present.map((_, i) => (ranks[0] || 0) + i)
+      : ranks;
+
+  for (let i = 0; i < present.length; i++) {
+    await db
+      .update(tasks)
+      .set({
+        sortOrder: uniqueRanks[i],
+        updatedAt: sql`(datetime('now'))`,
+      })
+      .where(eq(tasks.id, present[i]));
+  }
+
+  return { updated: present.length };
 }
 
 export async function softDeleteTask(id: number, reason?: string | null) {

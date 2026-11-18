@@ -46,6 +46,8 @@ export const tasks = sqliteTable("tasks", {
   abandonReason: text("abandon_reason"),
   /** Quando pausou/pulou — manda pro fim da fila sem perder o createdAt de protocolo. */
   queueBumpAt: text("queue_bump_at"),
+  /** Ordem manual na mesa (drag). Independente do sequence/código. */
+  sortOrder: integer("sort_order").notNull().default(0),
   deletedAt: text("deleted_at"),
   deleteReason: text("delete_reason"),
   createdAt: text("created_at")
